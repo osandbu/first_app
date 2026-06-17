@@ -1,0 +1,97 @@
+# Organizational Design
+
+## The Hierarchy Was Always an Information Machine
+
+In the 1920s, Alfred Sloan faced a problem that no business leader had fully confronted before: how do you manage a company so large and diverse that no single person can understand all of it? General Motors, under Sloan's redesign, became a test case for a question that would define organizational thinking for the rest of the century.
+
+Sloan's answer was elegant for its time: separate strategic oversight from operational execution. Create a central staff layer — finance, planning, legal, human resources — whose job was to gather information from across the enterprise, synthesize it, and present it to senior leadership in a form that supported decisions. Below the central staff, divisional presidents ran their businesses with significant autonomy, within financial parameters set from the center. The divisional structure that emerged from General Motors in the 1920s became the template for the modern corporation.
+
+What made the Sloan model work was not its elegance as organizational theory. What made it work was that it was the right answer to an information problem. How do you know what is happening in your Chevrolet division if you're running Cadillac? You create a staff function to find out, synthesize the finding, and bring it forward. How do you ensure that divisional decisions don't undermine enterprise-level goals? You create planning and finance functions to track variance and enforce standards. The corporation's middle layers were, at bottom, information-processing machines built from human components.
+
+This matters because of what it implies about AI's organizational impact. AI systems do not merely automate some tasks within existing organizational structures. They automate the information-processing functions around which those structures were built. The middle of the corporate hierarchy — the layers devoted to gathering data from the field, synthesizing it into reports, and passing decisions back down — was the organizational answer to an information scarcity problem. When information is no longer scarce, the organizational form built around it becomes a candidate for fundamental redesign.
+
+The trap — and it is a real and well-documented trap — is redesigning the technology without redesigning the organization. Industrial factories that swapped electric motors for steam engines, but kept the same floor layout organized around proximity to a central power source, captured modest productivity gains. The breakthrough came when engineers redesigned the entire factory floor around what electricity made possible: individual motors at each workstation, workflow-driven layouts, machines organized by task rather than by power access. Economic historians Paul David and Erik Brynjolfsson documented the same delay with computing: the computers arrived in the 1970s, but the productivity gains showed up in the 1990s, after organizations had restructured around what computing made possible.
+
+The implication for executives deploying AI: the question is not "which tasks can AI automate?" The question is: given that AI can handle the information processing that organizational hierarchies exist to perform, what is the right shape of the organization that remains?
+
+---
+
+## What Compresses, What Expands
+
+If the hierarchy was an information machine, then AI's most direct organizational impact is on the layers that perform information work: gathering data, synthesizing it into reports, translating decisions into instructions, and tracking performance against plans.
+
+When AI absorbs these functions, three structural shifts happen.
+
+**The middle layers compress.** A global logistics company reorganized its regional operations by replacing a three-tier management hierarchy — regional vice president, district manager, site manager — with a two-tier structure after deploying AI systems for route optimization, exception management, and daily performance reporting. Span of control for remaining managers increased from an average of eight direct reports to eighteen. A consumer packaged goods company collapsed the separate analytical, planning, and commercial roles that had fed into a category director into a single "category lead" role backed by AI tooling — with the individual spending time previously consumed by data gathering on customer negotiation and strategic positioning instead.
+
+**The bottleneck migrates — and this is the most commonly missed organizational consequence.** A global bank deployed AI-assisted risk review that surfaced loan exceptions three times faster than the previous workflow. Then discovered that its organizational structure still routed exceptions through a four-level approval chain designed for the slower process. The bottleneck had moved from analysis to approval. Redesigning the approval structure to match the new speed of detection was as important as deploying the AI system itself. This pattern is general: when you remove a bottleneck from one stage of a workflow, the constraint moves to the next stage. Organizations that deploy AI into one function and then wonder why overall performance hasn't improved often find the answer in the stage adjacent to where AI was deployed.
+
+**The front line expands in autonomy.** When AI handles the coordination and information relay that middle management previously performed, the people at the front of the organization gain access to better information and carry more decision authority. A retail chain restructured its store operations team after AI systems absorbed inventory management, scheduling, and supplier coordination. Store managers who previously spent roughly 60% of their time on administrative functions were redesigned into a role centered on customer experience, team development, and community engagement. Not all managers made this transition successfully — the selection and development challenge proved harder than the structural redesign.
+
+And critically: the senior layer does not compress. A healthcare system found that its AI-assisted diagnostic support tool changed the effective team structure in its emergency department. Triage decisions that previously required a senior physician to review a junior physician's assessment could in many cases be validated by AI, but the remaining decisions — the ambiguous, high-stakes edge cases AI flagged as uncertain — required more senior time and attention, not less. The net effect was not a reduction in senior physician need but a redistribution of their attention toward harder problems. The premium on genuinely strategic judgment increases when the analytical and coordination layers are handled by AI.
+
+The organizational shape that results has a smaller, higher-judgment senior layer at the top; AI-handled information processing where the middle used to be; and a larger, more autonomous front line at the base. Jay Galbraith's Star Model provides the essential caution: changing the shape alone is insufficient. An organization that delayers its hierarchy without changing its reward systems will find that the layers reassemble. The people whose status, influence, and compensation derive from information-processing roles will recreate those roles in whatever form is available — through committee memberships, approval rights, and information-sharing protocols — if the explicit hierarchy is removed without addressing the underlying incentives. Structural redesign is always a five-element problem: strategy, structure, processes, rewards, and people must move together.
+
+---
+
+## The Manager's New Job
+
+If AI absorbs the coordination and information work that middle management traditionally performs, what does a manager do?
+
+The objection that management is irreplaceable is right, but for reasons that need precision. It is not that management is beyond automation's reach; it is that the parts of management worth preserving are the ones that were always distinctly human, and the parts being automated are not the valuable parts.
+
+The human manager's residual role centers on four capabilities AI cannot replicate.
+
+**Developing people.** Mentorship, feedback, career development, and the judgment calls about individual potential that require knowing a person over time are irreducibly human. A manager who previously spent 60% of her week in status meetings and report preparation had 40% left for her people. Remove the coordination burden via AI and she may have 80%. The capacity to develop people expands dramatically when the information-relay work disappears.
+
+**Maintaining accountability.** Organizations need humans who can be questioned, sanctioned, and who can accept responsibility when something goes wrong. AI systems can be responsible for execution; they cannot be accountable in the governance sense. Every consequential organizational decision requires a human accountable owner. This role does not diminish; it becomes more explicit.
+
+**Exercising contextual judgment.** The cases that AI escalates — the ambiguous situations, the novel problems, the decisions that fall outside historical patterns — are precisely where managerial judgment is most valuable. As AI handles more of the routine, the manager's time increasingly concentrates on the genuinely hard problems. This is not a smaller job; it is a harder one.
+
+**Building trust.** In organizations with fewer layers and wider spans of control, the coordination that hierarchy previously provided comes increasingly from shared norms, relationships, and trust. The manager who builds trust — who creates the shared expectations that allow distributed teams to act coherently without constant supervision — is performing the connective tissue function that hierarchy previously performed through structure. This is more important in an AI-native organization than in a traditional one, not less, because there are fewer structural mechanisms to substitute for it.
+
+The managers who thrive in AI-native organizations are not the best information processors — AI makes that skill less scarce. They are the best at the things AI cannot do: developing people, holding accountability, exercising judgment under genuine ambiguity, and building the trust that holds distributed teams together.
+
+---
+
+## New Team Archetypes
+
+The structural redesign produces team types not well-described by traditional functional categories.
+
+**The AI-augmented pod** is the primary building block: a small team — typically three to five people — with broad skills and high autonomy, backed by AI systems that handle research, synthesis, drafting, tracking, and routine analysis. The pod is organized around outcomes rather than functional specializations. Its advantage is not deep functional expertise but the quality of judgment its generalists can exercise when AI handles the analytical foundation. A professional services firm that experimented with AI-augmented pods — replacing larger practice-area teams with three-to-four-person generalist units backed by AI — found that client satisfaction and delivery speed both improved. The talent problem was harder than the structural problem: the model required individuals with broader skills and stronger judgment than a career path built around deep functional specialization had produced.
+
+**The platform team** curates and governs AI capabilities for the rest of the organization. This is not the team building AI systems; it is the team ensuring that AI tools available across the organization are reliable, appropriately governed, and adapted to the organization's specific context. Platform teams provide the enabling infrastructure that makes AI-augmented pods productive and serve as the organizational home for AI governance: model monitoring, incident response, and standards enforcement.
+
+**The judgment team** is the senior-expert layer that handles the hard cases AI escalates. In the healthcare emergency department, AI-assisted triage handled the clear cases; the senior physician team focused on the genuinely uncertain ones. The judgment team exists in every organization; AI deployment makes its role more explicit by concentrating the hard cases rather than distributing them across the workforce. Organizations that don't designate a judgment team explicitly will find that hard cases accumulate without clear ownership — a different form of the bottleneck migration problem.
+
+These archetypes provide vocabulary for organizational design conversations that the traditional functional hierarchy does not supply. They are not templates; the right configuration varies by organization, industry, and function. What they share is a design logic: small generalist teams for standard work, AI-governed platforms for infrastructure, senior-expert judgment for the genuinely hard.
+
+---
+
+## The Redesign Traps
+
+The most common failure modes in AI-era organizational redesign are predictable, and they cluster around the gap between structural change and the other four elements of organizational design that structure alone cannot drive.
+
+**Delayering without changing incentives.** Organizations that remove management layers while maintaining incentive systems that reward information-relay work find that the layers reassemble. The Galbraith insight is exact: changing structure without changing rewards changes behavior less than the org chart suggests.
+
+**Adding AI governance on top of an unreformed hierarchy.** Organizations that deploy AI systems without redesigning the organizational structure around them accumulate overhead: the legacy hierarchy plus the new governance functions. This is the worst of both worlds. The right approach is to add AI governance while redesigning the hierarchy simultaneously, so that governance functions replace rather than supplement the coordination functions AI is displacing.
+
+**Redesigning structure without redesigning talent profiles.** The AI-augmented pod requires generalists with strong judgment; the traditional functional hierarchy rewarded deep specialists with strong information-processing skills. The professional services firm that restructured around pods discovered that the structural redesign was successful in design and difficult in execution because the firm's existing talent had been built for a different model. Treat talent redesign as an integral component of structural redesign, not a downstream consequence.
+
+**Misidentifying the bottleneck.** The bank that deployed AI-assisted risk review and found the bottleneck migrated from analysis to approval illustrates a general principle: organizational systems have multiple bottlenecks, and removing one reveals the next. Effective redesign requires mapping the full system and anticipating where the constraint will migrate.
+
+All four traps share the same root cause: treating organizational redesign as a structural problem when it is a five-element problem. The organizations that navigate these traps successfully are the ones that change all five Star Model elements together — not necessarily simultaneously, but deliberately, with the interdependencies mapped in advance.
+
+---
+
+## Designing for Continuous Adaptation
+
+The hardest organizational design challenge in the AI era is not finding the right structure for today. It is building an organization capable of restructuring itself as AI capabilities continue to evolve.
+
+The organizations that survived multiple waves of technology disruption in the past thirty years were not necessarily those that made the best initial bet on each wave. They were those that built modular structures, preserved the ability to reconfigure without catastrophic cost, and developed the organizational learning capacity to recognize when the current design was being made obsolete. The internet destroyed many distribution intermediaries — record labels as gatekeepers, travel agencies as booking intermediaries, classified newspapers as the marketplace for jobs and goods. What distinguished survivors from casualties was not access to better technology; it was whether organizations had built identity and capability around something more durable than the distribution function the internet commoditized.
+
+The parallel for organizational design: the structures being disrupted by AI are those whose value derived primarily from information relay and coordination. Organizations that have built their management identity around these functions face structural pressure analogous to what the travel agency faced in 1996. The path forward is building identity and capability around what remains scarce when information processing is abundant: judgment, trust, and the human accountability that makes consequential decisions legitimate.
+
+For the executive, building in modularity means treating organizational design as a recurring practice, not a periodic event. A practical discipline: conduct a structured organizational review against the five Star Model elements at least annually, explicitly asking which capabilities AI has absorbed since the last review, which roles that creates space to redesign, and which incentive and talent misalignments have emerged as a result. This is not a major restructuring; it is an ongoing calibration. Organizations that have developed this as a routine discipline will find structural adaptation faster, less disruptive, and more aligned with the competitive reality of continuously evolving AI capabilities than those that treat organizational design as the five-year restructuring and the post-merger integration.
+
+The hierarchy that Alfred Sloan built was right for its time. It was a brilliant solution to the information problem of the twentieth century. The organizations that treat it as a permanent answer rather than a dated solution will carry the overhead of an engineering decision made for a world that no longer exists.
