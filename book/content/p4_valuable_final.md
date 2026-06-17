@@ -1,0 +1,101 @@
+# What Becomes More Valuable
+
+In 1455, Johannes Gutenberg completed his first Bible. Within fifty years, printing presses across Europe had produced more books than all the scribes of the previous thousand years combined. The scribes—who had controlled access to written knowledge with the same authority that executives today control access to organizational intelligence—did not disappear immediately. But their authority did. The ability to copy a manuscript, which had been rare and therefore powerful, became irrelevant as text production became abundant.
+
+What happened to value in the aftermath is instructive. It did not evaporate. It relocated. The theologian who could interpret scripture became more valuable, not less—because now that everyone could hold the text, the question of what it meant and how to act on it became pressing in ways it had never been when most people couldn't read. The jurist who could synthesize the emerging body of printed law became indispensable. The scientist who could evaluate and interpret natural philosophy became the century's intellectual heroes. The printing press made information abundant; it made interpretation scarce. And scarcity, as always, is where value concentrates.
+
+We are inside a structurally identical transition. AI is making information, analysis, and execution abundant. The question is not whether this changes the executive's job—it does, profoundly—but where value concentrates as a result. The answer is already visible in the economics of scarcity: judgment under uncertainty, the capacity to build genuine trust, organizational design sensibility, aesthetic taste, the courage to ask the right questions, and the distinctly human ability to give meaning to work. These capabilities are becoming scarcer as AI makes everything else more abundant. And scarcity, as always, is where value concentrates.
+
+---
+
+## The Economics of Scarcity
+
+Jay Barney's framework for competitive advantage argues that sustainable value derives from resources that are valuable, rare, inimitable, and non-substitutable. As AI systems make analysis, synthesis, and execution abundant, these capabilities fail the rarity test. Any organization that deploys comparable AI infrastructure can produce comparable analytical output. The competitive moat that once derived from having better information—a more sophisticated planning process, a larger research function, a more rigorous reporting cycle—disappears when every organization can produce that output with the same tools.
+
+What satisfies Barney's criteria in an AI world? Executive judgment that is unique to an individual's experience and context, shaped by decisions made under real stakes over years. Trust relationships built through consistent behavior over time, which cannot be transferred, sold, or replicated by deploying software. Organizational culture that is genuinely specific to the people in it and the history it has lived. Aesthetic sensibility that reflects a cultivated point of view about what excellence looks like in a particular domain. These capabilities are not evenly distributed, cannot be easily observed, cannot be instantly deployed, and become more valuable—not less—as execution becomes commoditized.
+
+This is not sentiment. It is economics. The value of any capability is partly a function of its scarcity relative to its complements. When analytical execution was scarce, it commanded premium pricing. When AI makes it abundant, the complement—the human capacity to judge what the analysis means and what to do about it—becomes the scarce input. The same logic that drove up the wages of the knowledge worker when physical labor was abundant now drives up the value of the judgment worker when analytical labor is automated.
+
+History shows this pattern repeating across major technology transitions. When electrification spread through manufacturing in the early twentieth century, engineering competence—which the transition itself had made more widely available—gradually lost its premium character. What became scarce was design and brand: the capacity to determine what to produce and for whom. Alfred Sloan understood that when production becomes cheap, the question of what to produce and for whom becomes the irreplaceable executive function. His strategy of variety and market segmentation overtook the Model T's engineering triumph precisely because he had understood where value had relocated.
+
+The executives who understand this pattern clearly—who recognize that AI is relocating value, not destroying it—will be over-investing in the capabilities that their organizations currently under-reward. That temporal gap between value creation and organizational recognition is where the most important career decisions will be made in the next five years.
+
+---
+
+## Judgment Under Uncertainty
+
+The word "judgment" is used loosely. It is worth being precise, because precision makes clear why AI cannot replicate it and why it compounds with experience in ways that information processing does not.
+
+Judgment, in the sense that matters here, is not having the right answer. It is the capacity to make the best decision available given incomplete information, under genuine time pressure, with significant consequences for being wrong, in circumstances where additional information would not resolve the uncertainty. The last part is crucial: genuine judgment situations are those where more data, better models, and longer analysis would not definitively settle the question. The judgment call is required precisely because the situation exceeds what analysis can resolve.
+
+Philip Tetlock's research on forecasting established that the qualities distinguishing the best human forecasters are intellectual humility, the willingness to update beliefs when evidence changes, comfort with genuine uncertainty rather than false precision, and the discipline to aggregate diverse perspectives rather than overweight their own. These qualities are dispositional and developable. They are also precisely the qualities that AI cannot replicate—not because AI lacks intelligence, but because the forecaster's edge comes from knowing the limits of their own knowledge, a metacognitive orientation that AI systems are not designed to maintain.
+
+AI does not diminish the importance of judgment—it reveals it. When AI handles information synthesis, the quality of the executive's judgment becomes more visible and more consequential. Before AI, a poor judgment call could be attributed to incomplete data or inadequate analysis. When the analysis is excellent and rapidly produced, the quality of the decision made from it is the only variable left.
+
+A global bank's Chief Risk Officer described this experience after deploying AI for credit risk analysis. The models outperformed any human team on historical patterns. But what they could not do was assess the risk of a client relationship with no historical precedent, evaluate a borrower's character in a privately negotiated deal, or make the call when regulatory pressures and competitive dynamics pointed in opposite directions. His job became almost entirely concentrated in the decisions the model explicitly flagged as beyond its confidence interval—the judgment calls at the tail of the distribution, where human accountability mattered most. His value did not decrease. It became more specific, more legible, and more consequential.
+
+The development implication is direct: the discipline of making explicit predictions about outcomes, tracking the results honestly, and identifying patterns in where your judgment is well-calibrated and where it is not. This is uncomfortable—it requires acknowledging where your judgment has been poor. It is also the only practice that actually improves judgment over time. AI frees up enough of your working time to make this investment possible in a way that information-gathering demands never allowed.
+
+---
+
+## Trust as Organizational Infrastructure
+
+Trust is not a soft attribute. It is organizational infrastructure—the mechanism by which decisions propagate through organizations quickly, by which stakeholders extend credit to leaders whose direction they cannot independently verify, and by which institutions maintain credibility when they are asked to account for consequential choices.
+
+The organizational behavior literature distinguishes two forms of trust that map directly onto the AI transition. Transactional trust is the expectation that a counterpart will deliver what they committed to—reliable, predictable, verifiable. AI systems can earn and manage transactional trust. They are consistent, accurate, and do not have bad days.
+
+Transformational trust is different. It is the trust you extend to a person's judgment in novel situations that you cannot fully specify in advance—betting on who they are rather than on what they have been told to do. In high-stakes decisions—a merger that changes the company's identity, a personnel choice that defines the culture, a strategic pivot in a crisis before the evidence is complete—the people involved are extending transformational trust. They are following a leader's direction not because they have verified the analysis, but because they trust the leader's judgment and character.
+
+AI cannot earn transformational trust. Not because it lacks analytical capability, but because trust of this kind requires shared vulnerability—the possibility of sacrifice, of being wrong in ways that matter personally, of accountability that goes beyond contract terms. The regional director who is trusted in a crisis is trusted because people have watched her make difficult calls, acknowledge mistakes, and stand by commitments that were costly to honor. AI systems have no professional reputation at stake, no career at risk, no accountability that survives the audit. Accountability requires a person.
+
+A professional services firm that deployed AI for analytical work found that clients would not accept recommendations without a trusted partner standing behind them. The AI produced analysis indistinguishable in quality from junior analyst work, but clients continued to pay for the partner who would put their professional reputation behind the recommendation. The AI raised the floor of what the firm could deliver; trust determined what clients were willing to pay for.
+
+As AI handles more operational decisions, the trust relationships between senior leaders—and between leaders and their organizations—become the primary connective tissue determining how fast good decisions propagate and how well organizations hold together when environments change faster than processes can adapt. Building and maintaining trust is not a soft skill. It is infrastructure. The specific behaviors that build transformational trust—maintaining commitments when circumstances make them expensive to keep, acknowledging uncertainty rather than projecting false confidence, being the person who tells the room what it doesn't want to hear—are where leadership investment should concentrate.
+
+---
+
+## Taste, Aesthetic Sensibility, and the Curation Function
+
+James March, the organizational theorist, introduced a concept he called aesthetic rationality—the capacity to make choices that are not fully justified by data but reflect cultivated taste, shaped by deep familiarity with what excellence looks like in a domain. March's insight is that this is not irrational. It is a different form of rationality, particularly important when the future is uncertain enough that optimization against specified criteria is less valuable than the judgment to set the criteria well.
+
+AI systems optimize for specified criteria. They are extraordinary at this. Give an AI system a clear objective function and large amounts of data, and it will find better solutions faster than any human team. What it cannot do is set the objective function in the first place—cannot determine what excellence looks like in a domain where excellence is contested, culturally inflected, and not fully articulable. The specification of criteria is precisely where aesthetic sensibility operates.
+
+A major consumer goods company deployed AI to generate product variants, packaging designs, and campaign concepts at a scale and speed no human creative team could match. The volume of technically competent options was overwhelming. What became scarce and therefore valuable was the small group of executives with genuine taste, deep category expertise, and cultural intuition who could identify the one concept worth building from the hundreds that were merely adequate. The brand director's job shifted from creative commissioning to curatorial judgment—a fundamentally more demanding role, because selecting from abundance requires a more developed aesthetic faculty than commissioning from scratch.
+
+Aesthetic sensibility is learnable, though not quickly and not abstractly. It develops through three specific practices: studying the history of excellence in a domain—understanding why what worked worked, not just that it worked—developing a vocabulary for quality that goes beyond intuition ("this feels right" becomes "this works because of the structural tension between X and Y"), and accumulating enough exposure to failure to recognize its early signatures before the market confirms them. Executives who invest deliberately in this development are building something that AI produces in abundance but cannot distinguish: the capacity to curate excellence from competence.
+
+The implication extends beyond creative functions. Wherever AI makes execution abundant—in strategy generation, in organizational design options, in talent assessment—the curation function emerges. The executive whose value was generating the options now faces a more demanding challenge: selecting the right option from far more of them than before. Taste is the capability this requires.
+
+---
+
+## The Right Questions
+
+AI answers questions extraordinarily well. Given a clear question and access to relevant information, AI produces answers with a speed and comprehensiveness that no human team can match. The capability is so impressive that it is easy to miss what it does not do.
+
+What remains scarce—and therefore economically valuable—is the capacity to formulate questions that challenge what everyone in the room has assumed. AI is essentially inert here: it generates answers within a problem space defined by the human asking. If the question is wrong—if it assumes the wrong causal structure, defines the wrong objective, or misses the risk everyone has implicitly agreed not to discuss—the AI's answer is excellently produced and fundamentally misdirected.
+
+The best executive questions do something specific: they violate assumptions. They challenge the implicit consensus that has formed around a problem. They surface the risk that everyone is treating as outside the scope of discussion. They ask why something that is taken for granted is taken for granted. These questions require intellectual courage—the willingness to interrupt comfortable narratives, to be wrong about assumptions in ways that are socially costly, to raise the possibility that the frame itself is the problem.
+
+Research on decision quality consistently shows that the most consequential interventions in organizational decision processes are not analytical—they are structural: the question that reframes the problem, the challenge to the assumption underlying the options, the articulation of the risk that was being treated as out of scope. These interventions come from humans who combine domain knowledge, social intelligence, and the willingness to create friction in service of better thinking.
+
+The development implication: senior executives should spend less time reviewing AI-generated answers and more time stress-testing the questions those answers were generated to address. Is this the right question? What assumption does this question take for granted? What would we discover if we asked a different question entirely? This meta-level engagement with question quality is the distinctly human contribution that no AI can make to the decision process—and it is where the most consequential improvements in organizational decision quality will come from.
+
+---
+
+## Giving Meaning to Work
+
+The deepest capability this chapter has to discuss is also the one most at risk of being dismissed as sentimental. Humans are motivated by meaning—not only by compensation, status, or intrinsic interest, but by the sense that what they do matters, is understood by people who care, and contributes to something beyond the transaction of employment.
+
+Research in organizational psychology converges on a consistent finding: the sense that one's work has significance, and that it is genuinely seen and valued by others, is one of the most powerful determinants of sustained engagement and performance. This is not a cultural observation. It has an economic mechanism.
+
+When AI handles execution, the scarce organizational resource is sustained human engagement in judgment-intensive work. The people whose engagement matters most—those with strong judgment, high learning velocity, and the relational capability to build trust—have options. They will direct their engagement toward environments where their contribution is genuinely seen and where the purpose of the work is articulated in ways that resonate with them as human beings. The executive who fails to provide this environment will find that the human capital their organization most needs quietly redirects elsewhere.
+
+AI can produce the syntax of recognition. It can generate the performance review that sounds appreciative, the all-hands message that sounds inspiring, the one-on-one that sounds like genuine understanding. But people can feel the difference—not always consciously, but consistently—between a leader who genuinely sees their contribution and a process that has been optimized to simulate it. As AI produces more of the administrative infrastructure of recognition, the genuine human version becomes rarer and therefore more valued.
+
+This is not a soft observation. It is the reason that organizations in high-trust, high-meaning environments consistently outperform those in low-trust environments on innovation, adaptation, and retention of exactly the people whose retention matters most. As AI removes the barriers to execution speed, trust and meaning become the primary organizational accelerants. The executive who builds environments where people feel seen—where the purpose of the work is articulated with specificity and authenticity, and where contributions are recognized in ways that feel real—is commanding a capability that no AI system can provide.
+
+---
+
+The book's central argument comes to rest here. Gathering information has become cheap. Analysis has become fast. Execution has become accessible at a scale and cost that would have seemed impossible a generation ago. What remains scarce is judgment that cannot be reduced to optimization, trust that requires consistent human behavior over time, taste that sets the criteria before AI optimizes against them, the courage to ask the questions that challenge what the room is assuming, and the human presence that makes people feel their work is seen and matters.
+
+These are not new virtues. They are ancient ones, newly scarce. And scarcity, as always, is where value concentrates.
