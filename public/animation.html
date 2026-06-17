@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The AI-Native Executive</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  overflow: hidden;
+}
+canvas { display: block; cursor: pointer; }
+#overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #c9a84c;
+  font-family: Georgia, serif;
+  z-index: 10;
+  cursor: pointer;
+  user-select: none;
+}
+#overlay h1 { font-size: 2.2rem; letter-spacing: 0.08em; margin-bottom: 0.4em; }
+#overlay p { color: #888; font-size: 1rem; letter-spacing: 0.05em; }
+#overlay .play {
+  margin-top: 2rem;
+  width: 64px; height: 64px;
+  border: 2px solid #c9a84c;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+#overlay .play::after {
+  content: '';
+  border-left: 22px solid #c9a84c;
+  border-top: 13px solid transparent;
+  border-bottom: 13px solid transparent;
+  margin-left: 5px;
+}
+</style>
+</head>
+<body>
+<div id="overlay">
+  <h1>THE AI-NATIVE EXECUTIVE</h1>
+  <p>A 90-second animated summary</p>
+  <div class="play"></div>
+</div>
+<canvas id="c"></canvas>
+
+<script>
+// ─────────────────────────────────────────────────────────
+//  Core constants
+// ─────────────────────────────────────────────────────────
+const W = 1280, H = 720;
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+canvas.width = W;
+canvas.height = H;
+
+const C = {
+  bg: '#07070d',
+  gold: '#c9a84c',
+  goldDim: '#7a6328',
+  blue: '#4a9eff',
+  blueDim: '#1a3d66',
+  white: '#efefef',
+  gray: '#777',
+  grayDim: '#333',
+  red: '#d95555',
+  green: '#52b080',
+};
+
+function resize() {
+  const s = Math.min(window.innerWidth / W, window.innerHeight / H);
+  canvas.style.width  = W * s + 'px';
+  canvas.style.height = H * s + 'px';
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ─────────────────────────────────────────────────────────
+//  Easing helpers
+// ─────────────────────────────────────────────────────────
+const clamp = (x, a=0, b=1) => Math.max(a, Math.min(b, x));
+const easeOut  = x => 1 - Math.pow(1 - clamp(x), 3);
+const easeIn   = x => Math.pow(clamp(x), 3);
+const easeInOut = x => clamp(x) < 0.5 ? 4*x*x*x : 1 - Math.pow(-2*x+2,3)/2;
+const lerp = (a, b, p) => a + (b - a) * p;
+
+let T = 0;  // current time in seconds
+
+// progress(start, end) → 0→1 over that window
+const p  = (s, e) => easeOut(clamp((T - s) / (e - s)));
+// fade-in over `dur` seconds starting at `s`
+const fi = (s, dur=1) => easeOut(clamp((T - s) / dur));
+// fade-out
+const fo = (s, dur=1) => easeOut(clamp((T - s) / dur));
+// scene alpha: smooth in + smooth out
+function sceneAlpha(s, e, inDur=1.2, outDur=1.2) {
+  const a = easeOut(clamp((T - s) / inDur));
+  const b = 1 - easeOut(clamp((T - (e - outDur)) / outDur));
+  return Math.min(a, b);
+}
+
+// ─────────────────────────────────────────────────────────
+//  Drawing primitives
+// ─────────────────────────────────────────────────────────
+function txt(str, x, y, size, color, alpha=1, align='center', font='Georgia,serif') {
+  if (alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = clamp(alpha);
+  ctx.fillStyle = color;
+  ctx.font = `${size}px ${font}`;
+  ctx.textAlign = align;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(str, x, y);
+  ctx.restore();
+}
+function mono(str, x, y, size, color, alpha=1, align='center') {
+  txt(str, x, y, size, color, alpha, align, "'Courier New',monospace");
+}
+function sans(str, x, y, size, color, alpha=1, align='center') {
+  txt(str, x, y, size, color, alpha, align, "'Arial',sans-serif");
+}
+
+function circle(x, y, r, color, alpha=1) {
+  if (alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = clamp(alpha);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function line(x1, y1, x2, y2, color, width=1.5, alpha=1, dash=[]) {
+  if (alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = clamp(alpha);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.setLineDash(dash);
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function rect(x, y, w, h, color, alpha=1) {
+  if (alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = clamp(alpha);
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, w, h);
+  ctx.restore();
+}
+
+// Stick figure: head + torso + arms
+function stickPerson(x, y, size, color, alpha=1) {
+  if (alpha <= 0) return;
+  const s = size;
+  ctx.save();
+  ctx.globalAlpha = clamp(alpha);
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = s * 0.12;
+  ctx.lineCap = 'round';
+  // head
+  ctx.beginPath();
+  ctx.arc(x, y - s*0.6, s*0.22, 0, Math.PI*2);
+  ctx.fill();
+  // body
+  ctx.beginPath(); ctx.moveTo(x, y - s*0.38); ctx.lineTo(x, y + s*0.25); ctx.stroke();
+  // arms
+  ctx.beginPath(); ctx.moveTo(x - s*0.35, y - s*0.1); ctx.lineTo(x + s*0.35, y - s*0.1); ctx.stroke();
+  // legs
+  ctx.beginPath(); ctx.moveTo(x, y + s*0.25); ctx.lineTo(x - s*0.25, y + s*0.7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x, y + s*0.25); ctx.lineTo(x + s*0.25, y + s*0.7); ctx.stroke();
+  ctx.restore();
+}
+
+// Document icon
+function docIcon(x, y, w, h, color, alpha=1) {
+  if (alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = clamp(alpha);
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = C.bg;
+  const lw = w * 0.75, lx = x + w * 0.125;
+  const lineH = h * 0.08, gap = h * 0.14;
+  for (let i = 0; i < 4; i++) {
+    ctx.fillRect(lx, y + h*0.18 + i * gap, i === 3 ? lw*0.6 : lw, lineH);
+  }
+  ctx.restore();
+}
+
+// Glowing orb
+function glowOrb(x, y, r, color, alpha=1, glowMult=2.5) {
+  if (alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = clamp(alpha) * 0.25;
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r * glowMult);
+  g.addColorStop(0, color);
+  g.addColorStop(1, 'transparent');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(x, y, r * glowMult, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+  circle(x, y, r, color, alpha);
+}
+
+// ─────────────────────────────────────────────────────────
+//  Scene 1  (0 – 14s)  The Old World
+//  Message: Intelligence was scarce. Analysis required armies.
+// ─────────────────────────────────────────────────────────
+function scene1(a) {
+  const cx = W/2;
+
+  // ── top title ──
+  txt('FOR DECADES, EXECUTIVE POWER', cx, 72, 28, C.gold, fi(1,1.2)*a, 'center', 'Georgia,serif');
+  txt('CAME FROM CONTROLLING INFORMATION', cx, 108, 28, C.gold, fi(2,1.2)*a);
+
+  // ── corporate hierarchy ──
+  const levels = [
+    { y: 205, count: 1, r: 28, color: C.gold },
+    { y: 315, count: 3, r: 20, color: C.blue },
+    { y: 420, count: 6, r: 14, color: '#5580aa' },
+    { y: 520, count: 11, r: 9, color: C.grayDim },
+  ];
+
+  const getXs = ({count}) => {
+    const gap = Math.min(130, (W - 200) / count);
+    return Array.from({length: count}, (_, i) => cx - (count-1)*gap/2 + i*gap);
+  };
+
+  // connector lines
+  for (let li = 0; li < levels.length - 1; li++) {
+    const tops = getXs(levels[li]);
+    const bots = getXs(levels[li+1]);
+    for (const tx of tops)
+      for (const bx of bots)
+        line(tx, levels[li].y, bx, levels[li+1].y, C.grayDim, 0.6, fi(0.5,1)*a*0.45);
+  }
+
+  // nodes
+  const hier = fi(0.5,1)*a;
+  for (const lv of levels) {
+    for (const x of getXs(lv))
+      circle(x, lv.y, lv.r, lv.color, hier);
+  }
+
+  // label CEO
+  sans('C E O', cx, 205, 11, C.bg, hier*0.9);
+
+  // label bottom row
+  sans('Analysts  ·  Reports  ·  Research', cx, 575, 17, C.gray, fi(1.5,1.2)*a*0.8);
+
+  // ── data particles flowing upward ──
+  const particleA = fi(1.5,1)*a;
+  const nParticles = 24;
+  for (let i = 0; i < nParticles; i++) {
+    const phase = (T * 0.45 + i / nParticles) % 1;
+    const py = lerp(520, 205, phase);
+    const px = cx + Math.sin(i * 2.1) * 160;
+    const palpha = Math.sin(phase * Math.PI) * 0.55 * particleA;
+    circle(px, py, 3, C.blue, palpha);
+  }
+
+  // ── bottom caption ──
+  txt('"Reports took weeks. Analysis required armies."', cx, 635, 22, C.gray, fi(3,1.5)*a);
+  txt('Intelligence was scarce — and scarcity shaped everything.', cx, 667, 20, C.gray, fi(5,1.5)*a*0.75);
+}
+
+// ─────────────────────────────────────────────────────────
+//  Scene 2  (14 – 27s)  The Shift — AI Arrives
+// ─────────────────────────────────────────────────────────
+function scene2(a) {
+  const cx = W/2, cy = H/2;
+
+  // radial glow
+  const gp = fi(14,1.5)*a;
+  ctx.save();
+  ctx.globalAlpha = gp * 0.18;
+  const bg = ctx.createRadialGradient(cx, cy-60, 0, cx, cy-60, 500);
+  bg.addColorStop(0, C.blue);
+  bg.addColorStop(0.5, C.gold);
+  bg.addColorStop(1, 'transparent');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+
+  // ── AI orb ──
+  const orbY = cy - 70;
+  const orbA = fi(14,1.4)*a;
+  glowOrb(cx, orbY, 55, C.blue, orbA, 3.5);
+
+  // inner bright core
+  ctx.save();
+  ctx.globalAlpha = orbA * 0.6;
+  const inner = ctx.createRadialGradient(cx, orbY, 0, cx, orbY, 55);
+  inner.addColorStop(0, '#ffffff');
+  inner.addColorStop(0.3, C.blue);
+  inner.addColorStop(1, 'transparent');
+  ctx.fillStyle = inner;
+  ctx.beginPath(); ctx.arc(cx, orbY, 55, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  mono('AI', cx, orbY, 22, '#fff', orbA);
+
+  // pulse rings
+  for (let r = 0; r < 4; r++) {
+    const phase = ((T - 14) * 0.7 + r / 4) % 1;
+    const rr = 55 + phase * 280;
+    const ra = (1 - phase) * 0.35 * orbA;
+    ctx.save();
+    ctx.globalAlpha = ra;
+    ctx.strokeStyle = C.blue;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(cx, orbY, rr, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+  }
+
+  // ── capability rays emanating ──
+  const labels = ['Strategy', 'Finance', 'Research', 'Legal', 'Marketing', 'Engineering'];
+  const rayA = fi(15.5, 1)*a;
+  for (let i = 0; i < labels.length; i++) {
+    const angle = (i / labels.length) * Math.PI * 2 - Math.PI * 0.5;
+    const r1 = 80, r2 = 230;
+    const x1 = cx + Math.cos(angle) * r1;
+    const y1 = orbY + Math.sin(angle) * r1;
+    const x2 = cx + Math.cos(angle) * r2;
+    const y2 = orbY + Math.sin(angle) * r2;
+    line(x1, y1, x2, y2, C.blue, 1, rayA * 0.5);
+    // small person at each end
+    stickPerson(x2, y2, 26, C.blue, rayA * 0.8);
+    sans(labels[i], x2 + Math.cos(angle)*38, y2 + Math.sin(angle)*38, 15, C.gray, rayA*0.7);
+  }
+
+  // ── main text ──
+  txt('Every executive just got', cx, 560, 38, C.white, fi(16.5, 1.2)*a);
+  txt('a team of geniuses.', cx, 610, 44, C.gold, fi(17.5, 1.2)*a);
+  txt('Analysis. Synthesis. Research. Available in hours, not weeks.', cx, 668, 22, C.gray, fi(19, 1.2)*a);
+}
+
+// ─────────────────────────────────────────────────────────
+//  Scene 3  (27 – 40s)  The Trap — Doing Old Things Faster
+// ─────────────────────────────────────────────────────────
+function scene3(a) {
+  const cx = W/2, cy = H/2;
+
+  txt('BUT MOST EXECUTIVES FELL INTO A TRAP', cx, 72, 30, C.gold, fi(27,1.2)*a);
+
+  // ── left column: before ──
+  const lx = W*0.27, rx = W*0.73;
+
+  sans('B E F O R E', lx, 170, 17, C.gray, fi(27.5,1)*a);
+  stickPerson(lx, 275, 55, C.blue, fi(27.5,1)*a);
+
+  // 1 document
+  const da = fi(27.5,1)*a;
+  docIcon(lx-22, 325, 44, 56, '#446', da);
+  sans('1 report / week', lx, 405, 16, C.gray, da);
+  sans('⏱  weeks of work', lx, 428, 15, C.gray, da*0.7);
+
+  // divider
+  line(cx, 155, cx, 610, C.grayDim, 1, fi(27.5,1)*a*0.4, [6, 4]);
+
+  // ── right column: wrong response ──
+  const wrongP = fi(28.5, 1.8)*a;
+  sans('A F T E R  (wrong)', rx, 170, 17, C.red, wrongP);
+  stickPerson(rx, 275, 55, C.blue, wrongP);
+
+  // piling documents
+  const numDocs = Math.floor(wrongP * 14) + 1;
+  for (let d = 0; d < Math.min(numDocs, 12); d++) {
+    const dy = 350 - d*12;
+    const shade = lerp(0x22, 0x55, d/12);
+    docIcon(rx - 24 - d*1.5, dy, 48, 60, `rgb(${shade},${shade+10},${shade+40})`, wrongP*(1-d*0.04));
+  }
+  sans(`${numDocs*8}+ reports / week`, rx, 490, 16, C.gray, wrongP);
+
+  // big red X
+  const xA = fi(32, 1.5)*a;
+  ctx.save();
+  ctx.globalAlpha = xA;
+  ctx.strokeStyle = C.red;
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(rx-50, 530); ctx.lineTo(rx+50, 615); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(rx+50, 530); ctx.lineTo(rx-50, 615); ctx.stroke();
+  ctx.restore();
+
+  txt('"More of the same" is not the answer.', cx, 648, 24, C.red, fi(33.5, 1.2)*a);
+  txt('The electric motor bolted onto the old shaft.', cx, 678, 20, C.gray, fi(35, 1.2)*a*0.8);
+}
+
+// ─────────────────────────────────────────────────────────
+//  Scene 4  (40 – 54s)  The Bottleneck Moves
+// ─────────────────────────────────────────────────────────
+function scene4(a) {
+  const cx = W/2;
+
+  txt('THE BOTTLENECK MOVES', cx, 72, 32, C.gold, fi(40,1.2)*a);
+
+  // ── Funnel ──
+  const funnelP = fi(40.5, 1.5)*a;
+  const topW = 540, neckW = 90;
+  const topY = 145, midY = 390, botY = 510;
+
+  // fill: wide section (information)
+  ctx.save();
+  ctx.globalAlpha = funnelP * 0.25;
+  ctx.fillStyle = C.blue;
+  ctx.beginPath();
+  ctx.moveTo(cx - topW/2, topY);
+  ctx.lineTo(cx + topW/2, topY);
+  ctx.lineTo(cx + neckW/2, midY);
+  ctx.lineTo(cx - neckW/2, midY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // fill: neck section (judgment) — gold
+  ctx.save();
+  ctx.globalAlpha = funnelP * 0.45;
+  const neckGrad = ctx.createLinearGradient(0, midY, 0, botY);
+  neckGrad.addColorStop(0, C.gold);
+  neckGrad.addColorStop(1, C.goldDim);
+  ctx.fillStyle = neckGrad;
+  ctx.fillRect(cx - neckW/2, midY, neckW, botY - midY);
+  ctx.restore();
+
+  // outlines
+  ctx.save();
+  ctx.globalAlpha = funnelP * 0.55;
+  ctx.strokeStyle = C.blue;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - topW/2, topY); ctx.lineTo(cx - neckW/2, midY); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx + topW/2, topY); ctx.lineTo(cx + neckW/2, midY); ctx.stroke();
+  ctx.restore();
+  ctx.save();
+  ctx.globalAlpha = funnelP * 0.55;
+  ctx.strokeStyle = C.gold;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - neckW/2, midY); ctx.lineTo(cx - neckW/2, botY); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx + neckW/2, midY); ctx.lineTo(cx + neckW/2, botY); ctx.stroke();
+  ctx.restore();
+
+  // items entering the funnel from top
+  const infoItems = ['Data', 'Reports', 'Models', 'Research', 'Benchmarks', 'Analysis'];
+  for (let i = 0; i < infoItems.length; i++) {
+    const col = i % 3;
+    const row = Math.floor(i / 3);
+    const ix = cx - topW*0.35 + col * (topW*0.35);
+    const iy = topY + 35 + row * 50;
+    sans(infoItems[i], ix, iy, 16, C.blue, funnelP * a * 0.9);
+  }
+
+  // "AI handles this" annotation
+  const annA = fi(41.5, 1)*a;
+  sans('AI handles this →', cx - topW/2 - 160, 250, 17, C.blue, annA * 0.85, 'left');
+
+  // judgment neck label
+  const judgA = fi(42, 1.2)*a;
+  sans('J U D G M E N T', cx + neckW/2 + 20, (midY+botY)/2, 18, C.gold, judgA, 'left');
+  line(cx + neckW/2 + 10, (midY+botY)/2, cx + neckW/2, (midY+botY)/2, C.gold, 1.2, judgA*0.5);
+
+  // ── key messages ──
+  txt('Gathering information becomes cheap.', cx, 560, 28, C.white, fi(43, 1.2)*a);
+  txt('Judgment becomes the scarce resource.', cx, 602, 30, C.gold, fi(44.5, 1.2)*a);
+  txt('The bottleneck didn\'t disappear — it moved.', cx, 652, 22, C.gray, fi(46.5, 1.2)*a*0.85);
+}
+
+// ─────────────────────────────────────────────────────────
+//  Scene 5  (54 – 68s)  What Endures
+// ─────────────────────────────────────────────────────────
+function scene5(a) {
+  const cx = W/2;
+
+  txt('WHAT AI CANNOT DO', cx, 72, 32, C.gold, fi(54,1.2)*a);
+
+  const pillars = [
+    {
+      x: W*0.20,
+      label: ['VALUES-LADEN', 'CHOICE'],
+      sub: ['Which outcome do we want?', 'What are we willing to trade?'],
+      color: C.gold,
+      emerge: 55,
+    },
+    {
+      x: W*0.50,
+      label: ['ORGANIZATIONAL', 'COMMITMENT'],
+      sub: ['Who is accountable?', 'Who bears responsibility?'],
+      color: C.blue,
+      emerge: 57.5,
+    },
+    {
+      x: W*0.80,
+      label: ['TRUST', ''],
+      sub: ['Relationships. Track records.', 'Integrity under pressure.'],
+      color: C.green,
+      emerge: 60,
+    },
+  ];
+
+  for (const pil of pillars) {
+    const pa = fi(pil.emerge, 1.5)*a;
+    if (pa <= 0) continue;
+
+    const pH = 270, pW = 110;
+    const pilY = H - 90 - pH;
+
+    // pillar body
+    ctx.save();
+    ctx.globalAlpha = pa;
+    const pg = ctx.createLinearGradient(0, pilY, 0, pilY+pH);
+    pg.addColorStop(0, pil.color);
+    pg.addColorStop(1, pil.color + '22');
+    ctx.fillStyle = pg;
+    ctx.fillRect(pil.x - pW/2, pilY, pW, pH);
+    ctx.restore();
+
+    // capital on top
+    ctx.save();
+    ctx.globalAlpha = pa;
+    ctx.fillStyle = pil.color;
+    ctx.fillRect(pil.x - pW/2 - 12, pilY - 12, pW + 24, 12);
+    ctx.restore();
+
+    // label above pillar
+    for (let li = 0; li < pil.label.length; li++) {
+      if (!pil.label[li]) continue;
+      sans(pil.label[li], pil.x, pilY - 28 - (pil.label.length-1-li)*26, 17, pil.color, pa);
+    }
+
+    // sub-text below
+    for (let si = 0; si < pil.sub.length; si++) {
+      sans(pil.sub[si], pil.x, H - 52 + si * 22, 14, C.gray, pa*0.75);
+    }
+  }
+
+  // executive figure in center
+  const figA = fi(62, 1.5)*a;
+  stickPerson(cx, 310, 60, C.white, figA);
+
+  // connection lines from figure to pillar tops
+  const figY = 310;
+  for (const pil of pillars) {
+    const pa = fi(pil.emerge, 1.5)*a * figA;
+    const pH = 270;
+    const pilY = H - 90 - pH;
+    line(cx, figY + 5, pil.x, pilY, pil.color, 1.2, pa * 0.45, [4,5]);
+  }
+
+  txt('The executive\'s irreducible work.', cx, 245, 24, C.gold, fi(63.5, 1.2)*a);
+  txt('AI can inform these decisions. It cannot make them.', cx, 680, 20, C.gray, fi(65, 1.2)*a*0.8);
+}
+
+// ─────────────────────────────────────────────────────────
+//  Scene 6  (68 – 82s)  The Redesign Imperative
+// ─────────────────────────────────────────────────────────
+function scene6(a) {
+  const cx = W/2, cy = H/2;
+
+  txt('THE REDESIGN IMPERATIVE', cx, 72, 32, C.gold, fi(68,1.2)*a);
+
+  // ── OLD org (left): tall pyramid ──
+  const oldX = W*0.24;
+  const oldA = Math.max(0, 1 - fo(73.5, 2)) * fi(68.5, 1)*a;
+
+  sans('O L D', oldX, 155, 18, C.gray, oldA);
+
+  const oldLevels = 5;
+  for (let l = 0; l < oldLevels; l++) {
+    const lw = 70 + l * 58, lh = 36;
+    const ly = 185 + l * 55;
+    ctx.save();
+    ctx.globalAlpha = oldA * (0.9 - l * 0.08);
+    ctx.fillStyle = lerp(0x44, 0x22, l/oldLevels).toString(16).padStart(2,'0');
+    ctx.fillStyle = `rgba(${lerp(100,50,l/4)},${lerp(120,60,l/4)},${lerp(180,90,l/4)},1)`;
+    ctx.fillRect(oldX - lw/2, ly, lw, lh);
+    ctx.restore();
+    if (l === 0) sans('CEO', oldX, ly + lh/2, 12, '#fff', oldA*0.7);
+    if (l === oldLevels-1) sans('Analysts', oldX, ly + lh/2, 11, '#aaa', oldA*0.6);
+  }
+
+  // ── TRANSITION ARROW ──
+  const arrowA = fi(70, 1.5)*a;
+  const arrowX1 = W*0.38, arrowX2 = W*0.62;
+  line(arrowX1, cy-20, arrowX2-10, cy-20, C.gold, 2.5, arrowA);
+  ctx.save();
+  ctx.globalAlpha = arrowA;
+  ctx.fillStyle = C.gold;
+  ctx.beginPath();
+  ctx.moveTo(arrowX2, cy-20);
+  ctx.lineTo(arrowX2-16, cy-28);
+  ctx.lineTo(arrowX2-16, cy-12);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+  sans('REDESIGN', cx, cy-48, 15, C.gold, arrowA*0.7);
+
+  // ── NEW org (right): flat, AI-centred ──
+  const newX = W*0.76;
+  const newA = fi(71, 1.5)*a;
+
+  sans('N E W', newX, 155, 18, C.gold, newA);
+
+  // AI orb
+  glowOrb(newX, cy-20, 42, C.blue, newA, 3);
+  mono('AI', newX, cy-20, 18, '#fff', newA);
+
+  // humans orbiting
+  const humanCount = 7;
+  for (let i = 0; i < humanCount; i++) {
+    const angle = (i / humanCount) * Math.PI*2 + (T - 68) * 0.5;
+    const hx = newX + Math.cos(angle) * 130;
+    const hy = (cy-20) + Math.sin(angle) * 100;
+    line(newX, cy-20, hx, hy, C.blue, 0.8, newA*0.3);
+    stickPerson(hx, hy, 24, i < 3 ? C.gold : C.white, newA*0.9);
+  }
+
+  // ── key lines ──
+  txt('Flat. Judgment-centred.', cx, 565, 26, C.white, fi(74.5, 1.2)*a);
+  txt('Designed around AI, not retrofitted to it.', cx, 605, 26, C.gold, fi(76, 1.2)*a);
+  txt('This is the executive\'s real task.', cx, 655, 22, C.gray, fi(77.5, 1.2)*a*0.85);
+}
+
+// ─────────────────────────────────────────────────────────
+//  Scene 7  (82 – 90s)  Finale / Core Thesis
+// ─────────────────────────────────────────────────────────
+function scene7(a) {
+  const cx = W/2, cy = H/2;
+
+  // background radial pulse
+  ctx.save();
+  ctx.globalAlpha = fi(82,2)*a * 0.12;
+  const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, 700);
+  bg.addColorStop(0, C.gold);
+  bg.addColorStop(0.4, C.blue);
+  bg.addColorStop(1, 'transparent');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+
+  // separator lines
+  const la = fi(82.3, 1)*a * 0.4;
+  line(cx-330, cy-130, cx+330, cy-130, C.gold, 1, la);
+  line(cx-330, cy-48, cx+330, cy-48, C.gold, 1, la);
+
+  // title
+  txt('THE AI-NATIVE EXECUTIVE', cx, cy - 88, 52, C.gold, fi(82.2, 1.2)*a);
+
+  // thesis lines
+  txt('AI will automate much of the work executives do,', cx, cy+10, 28, C.white, fi(83.5,1.2)*a);
+  txt('but amplify the importance of the decisions', cx, cy+48, 28, C.white, fi(83.5,1.2)*a);
+  txt('only executives can make.', cx, cy+86, 28, C.white, fi(83.5,1.2)*a);
+
+  // key call to action
+  txt('The winners won\'t simply adopt AI —', cx, cy+162, 30, C.gold, fi(85.5,1.2)*a);
+  txt('they\'ll redesign their organizations around it.', cx, cy+200, 30, C.gold, fi(85.5,1.2)*a);
+
+  // sub
+  txt('Not how to use AI. What changes when you do.', cx, cy+278, 21, C.gray, fi(87,1.2)*a*0.85);
+}
+
+// ─────────────────────────────────────────────────────────
+//  Progress bar
+// ─────────────────────────────────────────────────────────
+function drawProgressBar() {
+  rect(0, H-3, W, 3, C.grayDim, 1);
+  rect(0, H-3, W * clamp(T/90), 3, C.gold, 1);
+
+  // time remaining
+  const rem = Math.max(0, 90 - Math.floor(T));
+  mono(`${Math.floor(rem/60)}:${(rem%60).toString().padStart(2,'0')}`, W-44, H-18, 13, C.gray+'99', 1);
+}
+
+// ─────────────────────────────────────────────────────────
+//  Main render loop
+// ─────────────────────────────────────────────────────────
+let startTime = null;
+let running = false;
+
+function draw(timestamp) {
+  if (!running) return;
+  if (!startTime) startTime = timestamp;
+  T = (timestamp - startTime) / 1000;
+
+  if (T > 90) {
+    // freeze on final frame
+    T = 90;
+  }
+
+  ctx.fillStyle = C.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Scene schedule (with 1.2s overlap for crossfade)
+  if (T < 15.2)              scene1(sceneAlpha(0, 15.2));
+  if (T > 13.5 && T < 28.5) scene2(sceneAlpha(13.5, 28.5));
+  if (T > 27  && T < 41.5)  scene3(sceneAlpha(27, 41.5));
+  if (T > 40  && T < 55.5)  scene4(sceneAlpha(40, 55.5));
+  if (T > 54  && T < 69.5)  scene5(sceneAlpha(54, 69.5));
+  if (T > 68  && T < 83.5)  scene6(sceneAlpha(68, 83.5));
+  if (T > 82)                scene7(sceneAlpha(82, 91));
+
+  drawProgressBar();
+
+  if (T < 90) requestAnimationFrame(draw);
+}
+
+// ─────────────────────────────────────────────────────────
+//  Start on click
+// ─────────────────────────────────────────────────────────
+const overlay = document.getElementById('overlay');
+overlay.addEventListener('click', () => {
+  overlay.style.display = 'none';
+  running = true;
+  requestAnimationFrame(draw);
+});
+
+// Draw still first frame
+ctx.fillStyle = C.bg;
+ctx.fillRect(0, 0, W, H);
+T = 0;
+scene1(1);
+drawProgressBar();
+</script>
+</body>
+</html>
