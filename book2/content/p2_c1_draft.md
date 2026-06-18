@@ -46,6 +46,8 @@ No individual decision in this system is wrong. The senior engineers protecting 
 
 This is what organizational theorists mean when they talk about local rationality producing global irrationality. It's also the engineering version of a Nash equilibrium: no individual actor has reason to defect from the pattern, so the pattern persists even when everyone can see it's bad.
 
+The traffic jam analogy is useful here. No driver wants a traffic jam. Each driver makes individually rational decisions — merge when the gap opens, slow for the car ahead, change lanes when it looks faster. The jam emerges from the aggregate of those decisions. No individual driver produced it intentionally or irrationally. The system produced it from local optimization. The same is true of the untouchable legacy codebase, the undocumented critical component, the platform that nobody uses. These are organizational traffic jams: the emergent product of incentive structures, not the deliberate choices of bad actors.
+
 **The VP who kills the better solution.** A team has built something technically superior to the existing approach. They've done the analysis. The numbers are clear. And a VP has decided the organization will continue with the existing system.
 
 The explanation that engineers usually reach for is politics, or ego, or not-invented-here syndrome. Sometimes that's right. More often, the incentive map tells a different story.
@@ -121,6 +123,10 @@ If you work through these questions honestly, the behavior almost always makes s
 This is clarifying, not defeating. Understanding the incentive structure tells you where to apply pressure. If you want the manager to agree to the transfer, you need to address the thing he's actually losing — not just make the case for why it's good for the organization. If you want the team to take on the legacy rewrite, you need to change the reward structure for that work — not just explain why it needs to happen.
 
 The incentive map is the difference between trying to push someone up a hill and figuring out why the hill exists.
+
+There's a related skill that comes with practice: distinguishing between the things that look like friction and are actually immovable given the current structure, versus the things that look immovable but have a lever you haven't found yet. A tech lead who understands incentives can tell the difference between "this will never change because the measurement won't change and I can't change the measurement" and "this will change if I offer the right thing, because the block is a specific fear I can address." That distinction determines where to spend political capital. Spending it on the first category is expensive and fruitless. Spending it on the second is often more effective than expected, because most people are genuinely relieved when someone understands their actual constraints rather than just repeating the case for why the thing they want is a good idea.
+
+Behavioral economists have documented a related dynamic at the individual level: people respond to actual rewards, not intended ones. Introducing an external reward for something people were doing intrinsically can actually reduce the behavior, because the extrinsic reward changes the nature of the activity. This is sometimes called the crowding-out of intrinsic motivation. The practical implication for engineering organizations: when you change how something is measured, you don't just add a signal — you sometimes change how people relate to the underlying work. Incentive design is not neutral. It shapes what people care about, not just what they do.
 
 ---
 
