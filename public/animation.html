@@ -5,739 +5,825 @@
 <title>The AI-Native Executive</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-  background: #000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  overflow: hidden;
-}
-canvas { display: block; cursor: pointer; }
+body { background: #000; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
+canvas { display: block; }
 #overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.85);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: #c9a84c;
-  font-family: Georgia, serif;
-  z-index: 10;
-  cursor: pointer;
-  user-select: none;
+  position: fixed; inset: 0; background: rgba(0,0,0,0.93);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-family: Georgia, serif; cursor: pointer; z-index: 10; user-select: none;
 }
-#overlay h1 { font-size: 2.2rem; letter-spacing: 0.08em; margin-bottom: 0.4em; }
-#overlay p { color: #888; font-size: 1rem; letter-spacing: 0.05em; }
-#overlay .play {
-  margin-top: 2rem;
-  width: 64px; height: 64px;
-  border: 2px solid #c9a84c;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-}
-#overlay .play::after {
-  content: '';
-  border-left: 22px solid #c9a84c;
-  border-top: 13px solid transparent;
-  border-bottom: 13px solid transparent;
-  margin-left: 5px;
-}
+#overlay h1 { font-size: 2.5rem; color: #c9a84c; letter-spacing: .1em; margin-bottom: .3em; }
+#overlay p  { color: #555; font-size: .95rem; letter-spacing: .05em; }
+.play { margin-top: 2.5rem; width: 72px; height: 72px; border: 2.5px solid #c9a84c;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.play::after { content:''; border-left: 26px solid #c9a84c;
+  border-top: 15px solid transparent; border-bottom: 15px solid transparent; margin-left: 6px; }
 </style>
 </head>
 <body>
 <div id="overlay">
   <h1>THE AI-NATIVE EXECUTIVE</h1>
-  <p>A 90-second animated summary</p>
+  <p>A 90-second animated explainer · Click to play with narration</p>
   <div class="play"></div>
 </div>
 <canvas id="c"></canvas>
-
 <script>
-// ─────────────────────────────────────────────────────────
-//  Core constants
-// ─────────────────────────────────────────────────────────
-const W = 1280, H = 720;
+'use strict';
+// ── CANVAS SETUP ─────────────────────────────────────────────
 const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
-canvas.width = W;
-canvas.height = H;
+const ctx    = canvas.getContext('2d');
+const W = 1280, H = 720;
+canvas.width = W; canvas.height = H;
+function resize() {
+  const s = Math.min(window.innerWidth/W, window.innerHeight/H);
+  canvas.style.width = W*s+'px'; canvas.style.height = H*s+'px';
+}
+window.addEventListener('resize', resize); resize();
 
+// ── MATH ─────────────────────────────────────────────────────
+const PI = Math.PI;
+const clamp   = (x,lo=0,hi=1) => Math.max(lo,Math.min(hi,x));
+const lerp    = (a,b,t) => a+(b-a)*clamp(t);
+const easeOut = x => 1-Math.pow(1-clamp(x),3);
+const easeIn  = x => Math.pow(clamp(x),3);
+const eIO     = x => { x=clamp(x); return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2; }
+let T = 0;
+const fi = (s,d=1) => easeOut(clamp((T-s)/d));
+const scA = (s,e,i=1,o=1) =>
+  Math.min(easeOut(clamp((T-s)/i)), 1-easeOut(clamp((T-(e-o))/o)));
+
+// walk cycle – returns arm/leg angles + bob
+function wc(speed=3.5) {
+  const p = T*speed;
+  return { lL:Math.sin(p)*.42, lR:Math.sin(p+PI)*.42,
+           aL:-Math.sin(p)*.28, aR:-Math.sin(p+PI)*.28,
+           bob:Math.abs(Math.sin(p))*4 };
+}
+function idle() {
+  return { lL:0, lR:0, aL:.18, aR:-.18, bob:Math.sin(T*1.8)*2.5 };
+}
+
+// ── COLORS ───────────────────────────────────────────────────
 const C = {
-  bg: '#07070d',
-  gold: '#c9a84c',
-  goldDim: '#7a6328',
-  blue: '#4a9eff',
-  blueDim: '#1a3d66',
-  white: '#efefef',
-  gray: '#777',
-  grayDim: '#333',
-  red: '#d95555',
-  green: '#52b080',
+  bg:'#07070e', gold:'#c9a84c', goldD:'#7a6328',
+  blue:'#4a9eff', white:'#efefef', gray:'#778899',
+  red:'#d95555', green:'#52b080', skin:'#e8a878',
+  navy:'#1a3060', darkW:'#2c1505', midW:'#5c3018',
 };
 
-function resize() {
-  const s = Math.min(window.innerWidth / W, window.innerHeight / H);
-  canvas.style.width  = W * s + 'px';
-  canvas.style.height = H * s + 'px';
+// ── DRAW HELPERS ─────────────────────────────────────────────
+function setA(a){ ctx.globalAlpha = clamp(a); }
+function txt(s,x,y,sz,col,a=1,al='center',f='Georgia,serif'){
+  if(a<=0)return; ctx.save(); setA(a);
+  ctx.fillStyle=col; ctx.font=sz+'px '+f;
+  ctx.textAlign=al; ctx.textBaseline='middle';
+  ctx.fillText(s,x,y); ctx.restore();
 }
-window.addEventListener('resize', resize);
-resize();
-
-// ─────────────────────────────────────────────────────────
-//  Easing helpers
-// ─────────────────────────────────────────────────────────
-const clamp = (x, a=0, b=1) => Math.max(a, Math.min(b, x));
-const easeOut  = x => 1 - Math.pow(1 - clamp(x), 3);
-const easeIn   = x => Math.pow(clamp(x), 3);
-const easeInOut = x => clamp(x) < 0.5 ? 4*x*x*x : 1 - Math.pow(-2*x+2,3)/2;
-const lerp = (a, b, p) => a + (b - a) * p;
-
-let T = 0;  // current time in seconds
-
-// progress(start, end) → 0→1 over that window
-const p  = (s, e) => easeOut(clamp((T - s) / (e - s)));
-// fade-in over `dur` seconds starting at `s`
-const fi = (s, dur=1) => easeOut(clamp((T - s) / dur));
-// fade-out
-const fo = (s, dur=1) => easeOut(clamp((T - s) / dur));
-// scene alpha: smooth in + smooth out
-function sceneAlpha(s, e, inDur=1.2, outDur=1.2) {
-  const a = easeOut(clamp((T - s) / inDur));
-  const b = 1 - easeOut(clamp((T - (e - outDur)) / outDur));
-  return Math.min(a, b);
+function bold(s,x,y,sz,col,a=1,al='center'){txt(s,x,y,sz,col,a,al,'bold Georgia,serif');}
+function sans(s,x,y,sz,col,a=1,al='center'){txt(s,x,y,sz,col,a,al,'Arial,sans-serif');}
+function mono(s,x,y,sz,col,a=1,al='center'){txt(s,x,y,sz,col,a,al,'"Courier New",monospace');}
+function circ(x,y,r,col,a=1){
+  if(a<=0||r<=0)return; ctx.save(); setA(a);
+  ctx.fillStyle=col; ctx.beginPath(); ctx.arc(x,y,r,0,PI*2); ctx.fill(); ctx.restore();
 }
+function ln(x1,y1,x2,y2,col,lw=2,a=1,dash=[]){
+  if(a<=0)return; ctx.save(); setA(a);
+  ctx.strokeStyle=col; ctx.lineWidth=lw; ctx.lineCap='round';
+  ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(x1,y1);
+  ctx.lineTo(x2,y2); ctx.stroke(); ctx.restore();
+}
+function fr(x,y,w,h,col,a=1){ if(a<=0)return; ctx.save(); setA(a); ctx.fillStyle=col; ctx.fillRect(x,y,w,h); ctx.restore(); }
 
-// ─────────────────────────────────────────────────────────
-//  Drawing primitives
-// ─────────────────────────────────────────────────────────
-function txt(str, x, y, size, color, alpha=1, align='center', font='Georgia,serif') {
-  if (alpha <= 0) return;
-  ctx.save();
-  ctx.globalAlpha = clamp(alpha);
-  ctx.fillStyle = color;
-  ctx.font = `${size}px ${font}`;
-  ctx.textAlign = align;
-  ctx.textBaseline = 'middle';
-  ctx.fillText(str, x, y);
-  ctx.restore();
-}
-function mono(str, x, y, size, color, alpha=1, align='center') {
-  txt(str, x, y, size, color, alpha, align, "'Courier New',monospace");
-}
-function sans(str, x, y, size, color, alpha=1, align='center') {
-  txt(str, x, y, size, color, alpha, align, "'Arial',sans-serif");
-}
-
-function circle(x, y, r, color, alpha=1) {
-  if (alpha <= 0) return;
-  ctx.save();
-  ctx.globalAlpha = clamp(alpha);
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI*2);
-  ctx.fill();
+// paper icon
+function paper(x,y,w,h,ang=0,a=1){
+  if(a<=0)return; ctx.save(); setA(a);
+  ctx.translate(x,y); ctx.rotate(ang);
+  ctx.fillStyle='#f5f0e5'; ctx.fillRect(-w/2,-h/2,w,h);
+  ctx.fillStyle='#d0c8b5';
+  for(let i=0;i<4;i++) ctx.fillRect(-w/2+w*.12,-h*.28+i*(h/5),w*.76,h*.055);
   ctx.restore();
 }
 
-function line(x1, y1, x2, y2, color, width=1.5, alpha=1, dash=[]) {
-  if (alpha <= 0) return;
-  ctx.save();
-  ctx.globalAlpha = clamp(alpha);
-  ctx.strokeStyle = color;
-  ctx.lineWidth = width;
-  ctx.setLineDash(dash);
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.stroke();
+// AI orb
+function orb(x,y,r,a=1){
+  if(a<=0)return; ctx.save(); setA(a);
+  let g=ctx.createRadialGradient(x,y,0,x,y,r*3.2);
+  g.addColorStop(0,C.blue+'88'); g.addColorStop(1,'transparent');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,r*3.2,0,PI*2); ctx.fill();
+  let c=ctx.createRadialGradient(x,y,0,x,y,r);
+  c.addColorStop(0,'#fff'); c.addColorStop(.3,C.blue); c.addColorStop(1,'#041830');
+  ctx.fillStyle=c; ctx.beginPath(); ctx.arc(x,y,r,0,PI*2); ctx.fill();
+  ctx.strokeStyle=C.blue+'77'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.ellipse(x,y,r*1.9,r*.55,T*1.1,0,PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(x,y,r*1.9,r*.55,T*1.1+PI/2,0,PI*2); ctx.stroke();
   ctx.restore();
 }
 
-function rect(x, y, w, h, color, alpha=1) {
-  if (alpha <= 0) return;
-  ctx.save();
-  ctx.globalAlpha = clamp(alpha);
-  ctx.fillStyle = color;
-  ctx.fillRect(x, y, w, h);
-  ctx.restore();
-}
+// ── CHARACTER ─────────────────────────────────────────────────
+// x,y = foot position; sz = head radius
+function char(x,footY,sz,{
+  mood='neutral', suit=C.navy, tie=C.gold,
+  facing=1, aL=.15, aR=-.15, lL=0, lR=0,
+  bob=0, a=1, noTie=false,
+}={}){
+  if(a<=0)return;
+  ctx.save(); ctx.globalAlpha *= clamp(a);
+  const fy=footY-bob;
+  const headY=fy-sz*6.0, bodyY=fy-sz*3.8, hipY=fy-sz*1.85;
+  const shY=bodyY-sz*.95, shX=sz*.9;
+  const legW=sz*.46, armW=sz*.42;
 
-// Stick figure: head + torso + arms
-function stickPerson(x, y, size, color, alpha=1) {
-  if (alpha <= 0) return;
-  const s = size;
-  ctx.save();
-  ctx.globalAlpha = clamp(alpha);
-  ctx.strokeStyle = color;
-  ctx.fillStyle = color;
-  ctx.lineWidth = s * 0.12;
-  ctx.lineCap = 'round';
-  // head
-  ctx.beginPath();
-  ctx.arc(x, y - s*0.6, s*0.22, 0, Math.PI*2);
-  ctx.fill();
-  // body
-  ctx.beginPath(); ctx.moveTo(x, y - s*0.38); ctx.lineTo(x, y + s*0.25); ctx.stroke();
-  // arms
-  ctx.beginPath(); ctx.moveTo(x - s*0.35, y - s*0.1); ctx.lineTo(x + s*0.35, y - s*0.1); ctx.stroke();
-  // legs
-  ctx.beginPath(); ctx.moveTo(x, y + s*0.25); ctx.lineTo(x - s*0.25, y + s*0.7); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(x, y + s*0.25); ctx.lineTo(x + s*0.25, y + s*0.7); ctx.stroke();
-  ctx.restore();
-}
-
-// Document icon
-function docIcon(x, y, w, h, color, alpha=1) {
-  if (alpha <= 0) return;
-  ctx.save();
-  ctx.globalAlpha = clamp(alpha);
-  ctx.fillStyle = color;
-  ctx.fillRect(x, y, w, h);
-  ctx.fillStyle = C.bg;
-  const lw = w * 0.75, lx = x + w * 0.125;
-  const lineH = h * 0.08, gap = h * 0.14;
-  for (let i = 0; i < 4; i++) {
-    ctx.fillRect(lx, y + h*0.18 + i * gap, i === 3 ? lw*0.6 : lw, lineH);
-  }
-  ctx.restore();
-}
-
-// Glowing orb
-function glowOrb(x, y, r, color, alpha=1, glowMult=2.5) {
-  if (alpha <= 0) return;
-  ctx.save();
-  ctx.globalAlpha = clamp(alpha) * 0.25;
-  const g = ctx.createRadialGradient(x, y, 0, x, y, r * glowMult);
-  g.addColorStop(0, color);
-  g.addColorStop(1, 'transparent');
-  ctx.fillStyle = g;
-  ctx.beginPath(); ctx.arc(x, y, r * glowMult, 0, Math.PI*2); ctx.fill();
-  ctx.restore();
-  circle(x, y, r, color, alpha);
-}
-
-// ─────────────────────────────────────────────────────────
-//  Scene 1  (0 – 14s)  The Old World
-//  Message: Intelligence was scarce. Analysis required armies.
-// ─────────────────────────────────────────────────────────
-function scene1(a) {
-  const cx = W/2;
-
-  // ── top title ──
-  txt('FOR DECADES, EXECUTIVE POWER', cx, 72, 28, C.gold, fi(1,1.2)*a, 'center', 'Georgia,serif');
-  txt('CAME FROM CONTROLLING INFORMATION', cx, 108, 28, C.gold, fi(2,1.2)*a);
-
-  // ── corporate hierarchy ──
-  const levels = [
-    { y: 205, count: 1, r: 28, color: C.gold },
-    { y: 315, count: 3, r: 20, color: C.blue },
-    { y: 420, count: 6, r: 14, color: '#5580aa' },
-    { y: 520, count: 11, r: 9, color: C.grayDim },
-  ];
-
-  const getXs = ({count}) => {
-    const gap = Math.min(130, (W - 200) / count);
-    return Array.from({length: count}, (_, i) => cx - (count-1)*gap/2 + i*gap);
-  };
-
-  // connector lines
-  for (let li = 0; li < levels.length - 1; li++) {
-    const tops = getXs(levels[li]);
-    const bots = getXs(levels[li+1]);
-    for (const tx of tops)
-      for (const bx of bots)
-        line(tx, levels[li].y, bx, levels[li+1].y, C.grayDim, 0.6, fi(0.5,1)*a*0.45);
-  }
-
-  // nodes
-  const hier = fi(0.5,1)*a;
-  for (const lv of levels) {
-    for (const x of getXs(lv))
-      circle(x, lv.y, lv.r, lv.color, hier);
-  }
-
-  // label CEO
-  sans('C E O', cx, 205, 11, C.bg, hier*0.9);
-
-  // label bottom row
-  sans('Analysts  ·  Reports  ·  Research', cx, 575, 17, C.gray, fi(1.5,1.2)*a*0.8);
-
-  // ── data particles flowing upward ──
-  const particleA = fi(1.5,1)*a;
-  const nParticles = 24;
-  for (let i = 0; i < nParticles; i++) {
-    const phase = (T * 0.45 + i / nParticles) % 1;
-    const py = lerp(520, 205, phase);
-    const px = cx + Math.sin(i * 2.1) * 160;
-    const palpha = Math.sin(phase * Math.PI) * 0.55 * particleA;
-    circle(px, py, 3, C.blue, palpha);
-  }
-
-  // ── bottom caption ──
-  txt('"Reports took weeks. Analysis required armies."', cx, 635, 22, C.gray, fi(3,1.5)*a);
-  txt('Intelligence was scarce — and scarcity shaped everything.', cx, 667, 20, C.gray, fi(5,1.5)*a*0.75);
-}
-
-// ─────────────────────────────────────────────────────────
-//  Scene 2  (14 – 27s)  The Shift — AI Arrives
-// ─────────────────────────────────────────────────────────
-function scene2(a) {
-  const cx = W/2, cy = H/2;
-
-  // radial glow
-  const gp = fi(14,1.5)*a;
-  ctx.save();
-  ctx.globalAlpha = gp * 0.18;
-  const bg = ctx.createRadialGradient(cx, cy-60, 0, cx, cy-60, 500);
-  bg.addColorStop(0, C.blue);
-  bg.addColorStop(0.5, C.gold);
-  bg.addColorStop(1, 'transparent');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
-  ctx.restore();
-
-  // ── AI orb ──
-  const orbY = cy - 70;
-  const orbA = fi(14,1.4)*a;
-  glowOrb(cx, orbY, 55, C.blue, orbA, 3.5);
-
-  // inner bright core
-  ctx.save();
-  ctx.globalAlpha = orbA * 0.6;
-  const inner = ctx.createRadialGradient(cx, orbY, 0, cx, orbY, 55);
-  inner.addColorStop(0, '#ffffff');
-  inner.addColorStop(0.3, C.blue);
-  inner.addColorStop(1, 'transparent');
-  ctx.fillStyle = inner;
-  ctx.beginPath(); ctx.arc(cx, orbY, 55, 0, Math.PI*2); ctx.fill();
-  ctx.restore();
-
-  mono('AI', cx, orbY, 22, '#fff', orbA);
-
-  // pulse rings
-  for (let r = 0; r < 4; r++) {
-    const phase = (((T - 14) * 0.7 + r / 4) % 1 + 1) % 1;
-    const rr = 55 + phase * 280;
-    const ra = (1 - phase) * 0.35 * orbA;
+  // ── LEGS ──
+  function drawLeg(side, ang){
     ctx.save();
-    ctx.globalAlpha = ra;
-    ctx.strokeStyle = C.blue;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(cx, orbY, rr, 0, Math.PI*2); ctx.stroke();
+    ctx.translate(x+side*sz*.32*facing, hipY);
+    ctx.rotate(ang*facing);
+    ctx.fillStyle='#111827';
+    ctx.beginPath(); ctx.roundRect(-legW/2,0,legW,sz*1.88,legW/2); ctx.fill();
+    ctx.fillStyle='#08080f';
+    ctx.beginPath(); ctx.ellipse(facing*sz*.2,sz*1.88,sz*.34,sz*.14,0,0,PI*2); ctx.fill();
     ctx.restore();
   }
+  drawLeg( 1,lR); drawLeg(-1,lL);
 
-  // ── capability rays emanating ──
-  const labels = ['Strategy', 'Finance', 'Research', 'Legal', 'Marketing', 'Engineering'];
-  const rayA = fi(15.5, 1)*a;
-  for (let i = 0; i < labels.length; i++) {
-    const angle = (i / labels.length) * Math.PI * 2 - Math.PI * 0.5;
-    const r1 = 80, r2 = 230;
-    const x1 = cx + Math.cos(angle) * r1;
-    const y1 = orbY + Math.sin(angle) * r1;
-    const x2 = cx + Math.cos(angle) * r2;
-    const y2 = orbY + Math.sin(angle) * r2;
-    line(x1, y1, x2, y2, C.blue, 1, rayA * 0.5);
-    // small person at each end
-    stickPerson(x2, y2, 26, C.blue, rayA * 0.8);
-    sans(labels[i], x2 + Math.cos(angle)*38, y2 + Math.sin(angle)*38, 15, C.gray, rayA*0.7);
+  // ── BODY ──
+  ctx.fillStyle=suit;
+  ctx.beginPath(); ctx.ellipse(x,bodyY,sz*.97,sz*1.3,0,0,PI*2); ctx.fill();
+  // shirt V
+  ctx.fillStyle='#f0f0f0';
+  ctx.beginPath();
+  ctx.moveTo(x-sz*.24,bodyY-sz*.86); ctx.lineTo(x+sz*.24,bodyY-sz*.86);
+  ctx.lineTo(x+sz*.07,bodyY+sz*.2); ctx.lineTo(x,bodyY+sz*.36);
+  ctx.lineTo(x-sz*.07,bodyY+sz*.2); ctx.closePath(); ctx.fill();
+  // tie
+  if(!noTie){
+    ctx.fillStyle=tie;
+    ctx.beginPath();
+    ctx.moveTo(x-sz*.1,bodyY-sz*.6); ctx.lineTo(x+sz*.1,bodyY-sz*.6);
+    ctx.lineTo(x+sz*.065,bodyY+sz*.05); ctx.lineTo(x,bodyY+sz*.35);
+    ctx.lineTo(x-sz*.065,bodyY+sz*.05); ctx.closePath(); ctx.fill();
   }
 
-  // ── main text ──
-  txt('Every executive just got', cx, 560, 38, C.white, fi(16.5, 1.2)*a);
-  txt('a team of geniuses.', cx, 610, 44, C.gold, fi(17.5, 1.2)*a);
-  txt('Analysis. Synthesis. Research. Available in hours, not weeks.', cx, 668, 22, C.gray, fi(19, 1.2)*a);
-}
-
-// ─────────────────────────────────────────────────────────
-//  Scene 3  (27 – 40s)  The Trap — Doing Old Things Faster
-// ─────────────────────────────────────────────────────────
-function scene3(a) {
-  const cx = W/2, cy = H/2;
-
-  txt('BUT MOST EXECUTIVES FELL INTO A TRAP', cx, 72, 30, C.gold, fi(27,1.2)*a);
-
-  // ── left column: before ──
-  const lx = W*0.27, rx = W*0.73;
-
-  sans('B E F O R E', lx, 170, 17, C.gray, fi(27.5,1)*a);
-  stickPerson(lx, 275, 55, C.blue, fi(27.5,1)*a);
-
-  // 1 document
-  const da = fi(27.5,1)*a;
-  docIcon(lx-22, 325, 44, 56, '#446', da);
-  sans('1 report / week', lx, 405, 16, C.gray, da);
-  sans('⏱  weeks of work', lx, 428, 15, C.gray, da*0.7);
-
-  // divider
-  line(cx, 155, cx, 610, C.grayDim, 1, fi(27.5,1)*a*0.4, [6, 4]);
-
-  // ── right column: wrong response ──
-  const wrongP = fi(28.5, 1.8)*a;
-  sans('A F T E R  (wrong)', rx, 170, 17, C.red, wrongP);
-  stickPerson(rx, 275, 55, C.blue, wrongP);
-
-  // piling documents
-  const numDocs = Math.floor(wrongP * 14) + 1;
-  for (let d = 0; d < Math.min(numDocs, 12); d++) {
-    const dy = 350 - d*12;
-    const shade = lerp(0x22, 0x55, d/12);
-    docIcon(rx - 24 - d*1.5, dy, 48, 60, `rgb(${shade},${shade+10},${shade+40})`, wrongP*(1-d*0.04));
-  }
-  sans(`${numDocs*8}+ reports / week`, rx, 490, 16, C.gray, wrongP);
-
-  // big red X
-  const xA = fi(32, 1.5)*a;
-  ctx.save();
-  ctx.globalAlpha = xA;
-  ctx.strokeStyle = C.red;
-  ctx.lineWidth = 6;
-  ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(rx-50, 530); ctx.lineTo(rx+50, 615); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(rx+50, 530); ctx.lineTo(rx-50, 615); ctx.stroke();
-  ctx.restore();
-
-  txt('"More of the same" is not the answer.', cx, 648, 24, C.red, fi(33.5, 1.2)*a);
-  txt('The electric motor bolted onto the old shaft.', cx, 678, 20, C.gray, fi(35, 1.2)*a*0.8);
-}
-
-// ─────────────────────────────────────────────────────────
-//  Scene 4  (40 – 54s)  The Bottleneck Moves
-// ─────────────────────────────────────────────────────────
-function scene4(a) {
-  const cx = W/2;
-
-  txt('THE BOTTLENECK MOVES', cx, 72, 32, C.gold, fi(40,1.2)*a);
-
-  // ── Funnel ──
-  const funnelP = fi(40.5, 1.5)*a;
-  const topW = 540, neckW = 90;
-  const topY = 145, midY = 390, botY = 510;
-
-  // fill: wide section (information)
-  ctx.save();
-  ctx.globalAlpha = funnelP * 0.25;
-  ctx.fillStyle = C.blue;
-  ctx.beginPath();
-  ctx.moveTo(cx - topW/2, topY);
-  ctx.lineTo(cx + topW/2, topY);
-  ctx.lineTo(cx + neckW/2, midY);
-  ctx.lineTo(cx - neckW/2, midY);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-
-  // fill: neck section (judgment) — gold
-  ctx.save();
-  ctx.globalAlpha = funnelP * 0.45;
-  const neckGrad = ctx.createLinearGradient(0, midY, 0, botY);
-  neckGrad.addColorStop(0, C.gold);
-  neckGrad.addColorStop(1, C.goldDim);
-  ctx.fillStyle = neckGrad;
-  ctx.fillRect(cx - neckW/2, midY, neckW, botY - midY);
-  ctx.restore();
-
-  // outlines
-  ctx.save();
-  ctx.globalAlpha = funnelP * 0.55;
-  ctx.strokeStyle = C.blue;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(cx - topW/2, topY); ctx.lineTo(cx - neckW/2, midY); ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(cx + topW/2, topY); ctx.lineTo(cx + neckW/2, midY); ctx.stroke();
-  ctx.restore();
-  ctx.save();
-  ctx.globalAlpha = funnelP * 0.55;
-  ctx.strokeStyle = C.gold;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(cx - neckW/2, midY); ctx.lineTo(cx - neckW/2, botY); ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(cx + neckW/2, midY); ctx.lineTo(cx + neckW/2, botY); ctx.stroke();
-  ctx.restore();
-
-  // items entering the funnel from top
-  const infoItems = ['Data', 'Reports', 'Models', 'Research', 'Benchmarks', 'Analysis'];
-  for (let i = 0; i < infoItems.length; i++) {
-    const col = i % 3;
-    const row = Math.floor(i / 3);
-    const ix = cx - topW*0.35 + col * (topW*0.35);
-    const iy = topY + 35 + row * 50;
-    sans(infoItems[i], ix, iy, 16, C.blue, funnelP * a * 0.9);
-  }
-
-  // "AI handles this" annotation
-  const annA = fi(41.5, 1)*a;
-  sans('AI handles this →', cx - topW/2 - 160, 250, 17, C.blue, annA * 0.85, 'left');
-
-  // judgment neck label
-  const judgA = fi(42, 1.2)*a;
-  sans('J U D G M E N T', cx + neckW/2 + 20, (midY+botY)/2, 18, C.gold, judgA, 'left');
-  line(cx + neckW/2 + 10, (midY+botY)/2, cx + neckW/2, (midY+botY)/2, C.gold, 1.2, judgA*0.5);
-
-  // ── key messages ──
-  txt('Gathering information becomes cheap.', cx, 560, 28, C.white, fi(43, 1.2)*a);
-  txt('Judgment becomes the scarce resource.', cx, 602, 30, C.gold, fi(44.5, 1.2)*a);
-  txt('The bottleneck didn\'t disappear — it moved.', cx, 652, 22, C.gray, fi(46.5, 1.2)*a*0.85);
-}
-
-// ─────────────────────────────────────────────────────────
-//  Scene 5  (54 – 68s)  What Endures
-// ─────────────────────────────────────────────────────────
-function scene5(a) {
-  const cx = W/2;
-
-  txt('WHAT AI CANNOT DO', cx, 72, 32, C.gold, fi(54,1.2)*a);
-
-  const pillars = [
-    {
-      x: W*0.20,
-      label: ['VALUES-LADEN', 'CHOICE'],
-      sub: ['Which outcome do we want?', 'What are we willing to trade?'],
-      color: C.gold,
-      emerge: 55,
-    },
-    {
-      x: W*0.50,
-      label: ['ORGANIZATIONAL', 'COMMITMENT'],
-      sub: ['Who is accountable?', 'Who bears responsibility?'],
-      color: C.blue,
-      emerge: 57.5,
-    },
-    {
-      x: W*0.80,
-      label: ['TRUST', ''],
-      sub: ['Relationships. Track records.', 'Integrity under pressure.'],
-      color: C.green,
-      emerge: 60,
-    },
-  ];
-
-  for (const pil of pillars) {
-    const pa = fi(pil.emerge, 1.5)*a;
-    if (pa <= 0) continue;
-
-    const pH = 270, pW = 110;
-    const pilY = H - 90 - pH;
-
-    // pillar body
+  // ── ARMS ──
+  function drawArm(side, ang){
     ctx.save();
-    ctx.globalAlpha = pa;
-    const pg = ctx.createLinearGradient(0, pilY, 0, pilY+pH);
-    pg.addColorStop(0, pil.color);
-    pg.addColorStop(1, pil.color + '22');
-    ctx.fillStyle = pg;
-    ctx.fillRect(pil.x - pW/2, pilY, pW, pH);
+    ctx.translate(x+side*shX*facing, shY);
+    ctx.rotate(ang*facing);
+    ctx.fillStyle=suit;
+    ctx.beginPath(); ctx.roundRect(-armW/2,0,armW,sz*1.42,armW/2); ctx.fill();
+    ctx.fillStyle=C.skin;
+    ctx.beginPath(); ctx.arc(0,sz*1.42,sz*.23,0,PI*2); ctx.fill();
     ctx.restore();
+  }
+  drawArm( 1,aR); drawArm(-1,aL);
 
-    // capital on top
-    ctx.save();
-    ctx.globalAlpha = pa;
-    ctx.fillStyle = pil.color;
-    ctx.fillRect(pil.x - pW/2 - 12, pilY - 12, pW + 24, 12);
-    ctx.restore();
+  // ── HEAD ──
+  ctx.fillStyle=C.skin;
+  ctx.beginPath(); ctx.roundRect(x-sz*.2,headY+sz*.78,sz*.4,sz*.28,sz*.08); ctx.fill();
+  ctx.beginPath(); ctx.arc(x,headY,sz,0,PI*2); ctx.fill();
+  // hair
+  ctx.fillStyle='#2e1a08';
+  ctx.beginPath(); ctx.arc(x,headY,sz,PI*.92,PI*.08); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+sz*.93*facing,headY+sz*.18,sz*.22,PI*.3,PI*1.3); ctx.fill();
 
-    // label above pillar
-    for (let li = 0; li < pil.label.length; li++) {
-      if (!pil.label[li]) continue;
-      sans(pil.label[li], pil.x, pilY - 28 - (pil.label.length-1-li)*26, 17, pil.color, pa);
-    }
+  // ── FACE ──
+  const eY=headY+sz*.1, mY=headY+sz*.52;
+  const eL=x-sz*.37, eR=x+sz*.37;
 
-    // sub-text below
-    for (let si = 0; si < pil.sub.length; si++) {
-      sans(pil.sub[si], pil.x, H - 52 + si * 22, 14, C.gray, pa*0.75);
+  // whites
+  ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.ellipse(eL,eY,sz*.2,sz*.17,0,0,PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(eR,eY,sz*.2,sz*.17,0,0,PI*2); ctx.fill();
+
+  if(mood==='amazed'){
+    ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(eL,eY,sz*.15,0,PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(eR,eY,sz*.15,0,PI*2); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(eL-sz*.04,eY-sz*.05,sz*.05,0,PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(eR-sz*.04,eY-sz*.05,sz*.05,0,PI*2); ctx.fill();
+    ctx.strokeStyle='#422'; ctx.lineWidth=sz*.08; ctx.lineCap='round';
+    ctx.beginPath(); ctx.arc(x,mY+sz*.05,sz*.22,0,PI*2); ctx.stroke();
+    ctx.strokeStyle='#2e1a08'; ctx.lineWidth=sz*.09;
+    ctx.beginPath(); ctx.moveTo(eL-sz*.2,eY-sz*.34); ctx.lineTo(eL+sz*.2,eY-sz*.42); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(eR-sz*.2,eY-sz*.42); ctx.lineTo(eR+sz*.2,eY-sz*.34); ctx.stroke();
+  } else if(mood==='worried'){
+    ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(eL+sz*.03,eY+sz*.02,sz*.13,0,PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(eR-sz*.03,eY+sz*.02,sz*.13,0,PI*2); ctx.fill();
+    ctx.strokeStyle='#422'; ctx.lineWidth=sz*.08; ctx.lineCap='round';
+    ctx.beginPath(); ctx.arc(x,mY+sz*.14,sz*.29,PI+.35,-.35); ctx.stroke();
+    ctx.strokeStyle='#2e1a08'; ctx.lineWidth=sz*.09;
+    ctx.beginPath(); ctx.moveTo(eL-sz*.2,eY-sz*.34); ctx.lineTo(eL+sz*.18,eY-sz*.25); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(eR-sz*.18,eY-sz*.25); ctx.lineTo(eR+sz*.2,eY-sz*.34); ctx.stroke();
+  } else if(mood==='happy'){
+    ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(eL,eY,sz*.13,0,PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(eR,eY,sz*.13,0,PI*2); ctx.fill();
+    ctx.strokeStyle='#422'; ctx.lineWidth=sz*.09; ctx.lineCap='round';
+    ctx.beginPath(); ctx.arc(x,mY-sz*.07,sz*.3,.15,PI-.15); ctx.stroke();
+    ctx.strokeStyle='#2e1a08'; ctx.lineWidth=sz*.08;
+    ctx.beginPath(); ctx.moveTo(eL-sz*.2,eY-sz*.38); ctx.lineTo(eL+sz*.2,eY-sz*.44); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(eR-sz*.2,eY-sz*.44); ctx.lineTo(eR+sz*.2,eY-sz*.38); ctx.stroke();
+  } else if(mood==='thinking'){
+    ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(eL,eY,sz*.11,0,PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(eR,eY,sz*.14,0,PI*2); ctx.fill();
+    ctx.strokeStyle='#422'; ctx.lineWidth=sz*.08; ctx.lineCap='round';
+    ctx.beginPath(); ctx.arc(x+sz*.12,mY,sz*.22,.1,PI-.5); ctx.stroke();
+    ctx.strokeStyle='#2e1a08'; ctx.lineWidth=sz*.08;
+    ctx.beginPath(); ctx.moveTo(eL-sz*.2,eY-sz*.32); ctx.lineTo(eL+sz*.2,eY-sz*.3); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(eR-sz*.2,eY-sz*.43); ctx.lineTo(eR+sz*.2,eY-sz*.33); ctx.stroke();
+  } else if(mood==='determined'){
+    ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(eL,eY+sz*.02,sz*.13,0,PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(eR,eY+sz*.02,sz*.13,0,PI*2); ctx.fill();
+    ctx.strokeStyle='#422'; ctx.lineWidth=sz*.09; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(x-sz*.28,mY); ctx.lineTo(x+sz*.28,mY); ctx.stroke();
+    ctx.strokeStyle='#2e1a08'; ctx.lineWidth=sz*.1;
+    ctx.beginPath(); ctx.moveTo(eL-sz*.2,eY-sz*.29); ctx.lineTo(eL+sz*.2,eY-sz*.33); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(eR-sz*.2,eY-sz*.33); ctx.lineTo(eR+sz*.2,eY-sz*.29); ctx.stroke();
+  } else { // neutral
+    ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(eL,eY,sz*.13,0,PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(eR,eY,sz*.13,0,PI*2); ctx.fill();
+    ctx.strokeStyle='#422'; ctx.lineWidth=sz*.07; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(x-sz*.27,mY); ctx.lineTo(x+sz*.27,mY); ctx.stroke();
+    ctx.strokeStyle='#2e1a08'; ctx.lineWidth=sz*.08;
+    ctx.beginPath(); ctx.moveTo(eL-sz*.2,eY-sz*.32); ctx.lineTo(eL+sz*.2,eY-sz*.32); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(eR-sz*.2,eY-sz*.32); ctx.lineTo(eR+sz*.2,eY-sz*.32); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ── BACKGROUNDS ──────────────────────────────────────────────
+// Pre-gen city skyline (deterministic)
+const CITY = [0,1,2,3,4,5].map(i=>({
+  bx:i*42+8, bw:24+i*5,
+  bh:70+[20,55,15,80,40,65][i],
+  lit:[...Array(32)].map((_,j)=>(j*13+i*7)%5<2),
+}));
+
+function bgOffice(a){
+  if(a<=0)return; ctx.save(); ctx.globalAlpha=clamp(a);
+  // wall
+  let g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#1c0f07'); g.addColorStop(.72,'#2a1208'); g.addColorStop(1,'#100804');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  // wood grain lines
+  ctx.strokeStyle='#190c04'; ctx.lineWidth=1;
+  for(let y=60;y<H*.72;y+=55){
+    ctx.globalAlpha=a*.3; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+  }
+  ctx.globalAlpha=clamp(a);
+  // floor
+  g=ctx.createLinearGradient(0,H*.72,0,H);
+  g.addColorStop(0,'#3c2010'); g.addColorStop(1,'#1e0e06');
+  ctx.fillStyle=g; ctx.fillRect(0,H*.72,W,H*.28);
+  // window right
+  const wx=780,wy=75,ww=260,wh=360;
+  ctx.fillStyle='#09152a'; ctx.fillRect(wx,wy,ww,wh);
+  // city silhouette
+  CITY.forEach(({bx,bw,bh,lit})=>{
+    const rx=wx+bx, ry=wy+wh-bh;
+    ctx.fillStyle='#040e1e'; ctx.fillRect(rx,ry,bw,bh);
+    lit.forEach((on,j)=>{
+      if(!on)return;
+      const wx2=rx+3+(j%4)*6, wy2=ry+5+Math.floor(j/4)*14;
+      if(wx2+5<rx+bw && wy2+8<ry+bh){ ctx.fillStyle='#1a3a60'; ctx.fillRect(wx2,wy2,5,7); }
+    });
+  });
+  // window frame
+  ctx.strokeStyle=C.midW; ctx.lineWidth=9; ctx.strokeRect(wx,wy,ww,wh);
+  ctx.beginPath(); ctx.moveTo(wx+ww/2,wy); ctx.lineTo(wx+ww/2,wy+wh); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(wx,wy+wh/2); ctx.lineTo(wx+ww,wy+wh/2); ctx.stroke();
+  // bookshelf left
+  ctx.fillStyle=C.darkW; ctx.fillRect(28,55,175,500);
+  const bkCols=['#8b2020','#204080','#206040','#7a5010','#502080','#1a4060'];
+  for(let s=0;s<6;s++){
+    ctx.fillStyle=C.midW; ctx.fillRect(28,55+s*82,175,8);
+    for(let b=0;b<5;b++){
+      ctx.fillStyle=bkCols[(s+b)%bkCols.length];
+      ctx.fillRect(38+b*32,63+s*82,27,72);
     }
   }
-
-  // executive figure in center
-  const figA = fi(62, 1.5)*a;
-  stickPerson(cx, 310, 60, C.white, figA);
-
-  // connection lines from figure to pillar tops
-  const figY = 310;
-  for (const pil of pillars) {
-    const pa = fi(pil.emerge, 1.5)*a * figA;
-    const pH = 270;
-    const pilY = H - 90 - pH;
-    line(cx, figY + 5, pil.x, pilY, pil.color, 1.2, pa * 0.45, [4,5]);
-  }
-
-  txt('The executive\'s irreducible work.', cx, 245, 24, C.gold, fi(63.5, 1.2)*a);
-  txt('AI can inform these decisions. It cannot make them.', cx, 680, 20, C.gray, fi(65, 1.2)*a*0.8);
+  // desk surface
+  const dt=H*.56, dW=560, dX=W/2-280;
+  ctx.fillStyle=C.midW; ctx.fillRect(dX,dt,dW,22);
+  ctx.fillStyle=C.darkW; ctx.fillRect(dX,dt+22,dW,200);
+  ctx.fillStyle='#190c04'; ctx.fillRect(dX+18,dt+22,22,200); ctx.fillRect(dX+dW-40,dt+22,22,200);
+  // lamp
+  ctx.fillStyle='#888'; ctx.fillRect(W/2+195,dt-65,7,67);
+  ctx.fillStyle='#c8b420';
+  ctx.beginPath(); ctx.ellipse(W/2+198,dt-65,28,9,-.5,0,PI*2); ctx.fill();
+  g=ctx.createRadialGradient(W/2+198,dt-30,0,W/2+198,dt-30,170);
+  g.addColorStop(0,'rgba(255,220,90,.13)'); g.addColorStop(1,'transparent');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.restore();
 }
 
-// ─────────────────────────────────────────────────────────
-//  Scene 6  (68 – 82s)  The Redesign Imperative
-// ─────────────────────────────────────────────────────────
-function scene6(a) {
-  const cx = W/2, cy = H/2;
+function bgModern(a){
+  if(a<=0)return; ctx.save(); ctx.globalAlpha=clamp(a);
+  let g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#e8eef5'); g.addColorStop(.7,'#d0d9ea'); g.addColorStop(1,'#b8c5d8');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  g=ctx.createLinearGradient(0,H*.72,0,H);
+  g.addColorStop(0,'#a8b6c8'); g.addColorStop(1,'#8898b2');
+  ctx.fillStyle=g; ctx.fillRect(0,H*.72,W,H*.28);
+  // floor grid
+  ctx.strokeStyle='#95a5b8'; ctx.lineWidth=.5;
+  for(let gx=0;gx<W;gx+=80){ ctx.globalAlpha=a*.3; ctx.beginPath(); ctx.moveTo(gx,H*.72); ctx.lineTo(gx,H); ctx.stroke(); }
+  ctx.globalAlpha=clamp(a);
+  // big window left
+  g=ctx.createLinearGradient(0,55,0,H*.72); g.addColorStop(0,'#c5dff8'); g.addColorStop(1,'#a8cce8');
+  ctx.fillStyle=g; ctx.fillRect(0,55,290,H*.7);
+  ctx.strokeStyle='#a0b8d0'; ctx.lineWidth=5;
+  ctx.strokeRect(0,55,290,H*.7);
+  for(let wy=55;wy<H*.7+55;wy+=105){ ctx.beginPath(); ctx.moveTo(0,wy); ctx.lineTo(290,wy); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(145,55); ctx.lineTo(145,H*.7+55); ctx.stroke();
+  // desk
+  const dt=H*.56, dX=W/2-290;
+  ctx.fillStyle='#f7f8fc'; ctx.fillRect(dX,dt,580,20);
+  ctx.fillStyle='#e0e5ee'; ctx.fillRect(dX,dt+20,580,165);
+  ctx.fillStyle='#c8cdd8'; ctx.fillRect(dX+18,dt+20,15,165); ctx.fillRect(dX+580-33,dt+20,15,165);
+  ctx.restore();
+}
 
-  txt('THE REDESIGN IMPERATIVE', cx, 72, 32, C.gold, fi(68,1.2)*a);
-
-  // ── OLD org (left): tall pyramid ──
-  const oldX = W*0.24;
-  const oldA = Math.max(0, 1 - fo(73.5, 2)) * fi(68.5, 1)*a;
-
-  sans('O L D', oldX, 155, 18, C.gray, oldA);
-
-  const oldLevels = 5;
-  for (let l = 0; l < oldLevels; l++) {
-    const lw = 70 + l * 58, lh = 36;
-    const ly = 185 + l * 55;
-    ctx.save();
-    ctx.globalAlpha = oldA * (0.9 - l * 0.08);
-    ctx.fillStyle = lerp(0x44, 0x22, l/oldLevels).toString(16).padStart(2,'0');
-    ctx.fillStyle = `rgba(${lerp(100,50,l/4)},${lerp(120,60,l/4)},${lerp(180,90,l/4)},1)`;
-    ctx.fillRect(oldX - lw/2, ly, lw, lh);
-    ctx.restore();
-    if (l === 0) sans('CEO', oldX, ly + lh/2, 12, '#fff', oldA*0.7);
-    if (l === oldLevels-1) sans('Analysts', oldX, ly + lh/2, 11, '#aaa', oldA*0.6);
+function bgAbstract(a){
+  if(a<=0)return; ctx.save(); ctx.globalAlpha=clamp(a);
+  let g=ctx.createLinearGradient(0,0,W,H);
+  g.addColorStop(0,'#020510'); g.addColorStop(.5,'#04071a'); g.addColorStop(1,'#020510');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle=C.blue+'18'; ctx.lineWidth=1;
+  const vx=W/2,vy=H*.5;
+  for(let i=-8;i<=8;i++){
+    ctx.beginPath(); ctx.moveTo(vx+i*80,0); ctx.lineTo(vx,vy); ctx.stroke();
   }
+  for(let i=-6;i<=6;i++){
+    const y=vy+i*55;
+    if(y>=0&&y<=H){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  }
+  ctx.restore();
+}
 
-  // ── TRANSITION ARROW ──
-  const arrowA = fi(70, 1.5)*a;
-  const arrowX1 = W*0.38, arrowX2 = W*0.62;
-  line(arrowX1, cy-20, arrowX2-10, cy-20, C.gold, 2.5, arrowA);
-  ctx.save();
-  ctx.globalAlpha = arrowA;
-  ctx.fillStyle = C.gold;
+function bgColumns(a){
+  if(a<=0)return; ctx.save(); ctx.globalAlpha=clamp(a);
+  let g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#f5f0e8'); g.addColorStop(.7,'#e8e0cf'); g.addColorStop(1,'#d0c8b5');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#c8c0ae'; ctx.fillRect(0,H*.75,W,H*.25);
+  ctx.strokeStyle='#b8b0a0'; ctx.lineWidth=.8;
+  for(let gx=0;gx<W;gx+=75){ ctx.beginPath(); ctx.moveTo(gx,H*.75); ctx.lineTo(gx,H); ctx.stroke(); }
+  [[W*.18,C.gold],[W*.5,C.blue],[W*.82,C.green]].forEach(([cx,col])=>{
+    const cw=68,ch=H*.68,cy=H*.05;
+    ctx.fillStyle='#d5cdc0'; ctx.fillRect(cx-cw/2-14,cy-14,cw+28,14);
+    g=ctx.createLinearGradient(cx-cw/2,0,cx+cw/2,0);
+    g.addColorStop(0,'#c5bdb0'); g.addColorStop(.3,'#f0e8d8'); g.addColorStop(.7,'#e0d8c5'); g.addColorStop(1,'#b5ada0');
+    ctx.fillStyle=g; ctx.fillRect(cx-cw/2,cy,cw,ch);
+    ctx.fillStyle=col+'1a'; ctx.fillRect(cx-cw/2,cy,cw,ch);
+    ctx.fillStyle='#d0c8b5'; ctx.fillRect(cx-cw/2-14,cy+ch,cw+28,18);
+  });
+  ctx.restore();
+}
+
+function bgWhiteboard(a){
+  if(a<=0)return; ctx.save(); ctx.globalAlpha=clamp(a);
+  ctx.fillStyle='#edf0f5'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#d5d8e0'; ctx.fillRect(0,H*.72,W,H*.28);
+  ctx.fillStyle='#f9fafc'; ctx.fillRect(W*.08,72,W*.84,H*.6);
+  ctx.strokeStyle='#aab4c5'; ctx.lineWidth=4; ctx.strokeRect(W*.08,72,W*.84,H*.6);
+  ctx.fillStyle='#bcc4d0'; ctx.fillRect(W*.08,72+H*.6,W*.84,15);
+  ctx.restore();
+}
+
+function bgHorizon(a){
+  if(a<=0)return; ctx.save(); ctx.globalAlpha=clamp(a);
+  let g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#080618'); g.addColorStop(.45,'#180e38'); g.addColorStop(.72,'#5a2e08');
+  g.addColorStop(.86,'#c87018'); g.addColorStop(1,'#e89828');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  g=ctx.createRadialGradient(W/2,H*.74,0,W/2,H*.74,200);
+  g.addColorStop(0,'rgba(255,235,130,.85)'); g.addColorStop(.35,'rgba(255,170,50,.45)'); g.addColorStop(1,'transparent');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  // silhouette skyline
+  ctx.fillStyle='#060412';
+  ctx.beginPath(); ctx.moveTo(0,H*.76);
+  const pts=[0,40,90,60,180,90,260,50,350,80,450,40,550,70,640,45,730,75,820,50,910,80,1000,45,1100,70,1200,55,1280,80];
+  for(let i=0;i<pts.length;i+=2) ctx.lineTo(pts[i],H*.76-pts[i+1]*.28+15);
+  ctx.lineTo(W,H*.76); ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath(); ctx.fill();
+  ctx.fillRect(0,H*.76,W,H*.24);
+  // road
+  ctx.fillStyle='#0e0c1e';
   ctx.beginPath();
-  ctx.moveTo(arrowX2, cy-20);
-  ctx.lineTo(arrowX2-16, cy-28);
-  ctx.lineTo(arrowX2-16, cy-12);
-  ctx.closePath();
-  ctx.fill();
+  ctx.moveTo(W/2-185,H); ctx.lineTo(W/2+185,H);
+  ctx.lineTo(W/2+22,H*.76); ctx.lineTo(W/2-22,H*.76); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle=C.gold+'44'; ctx.lineWidth=2; ctx.setLineDash([20,16]);
+  ctx.beginPath(); ctx.moveTo(W/2,H); ctx.lineTo(W/2,H*.76); ctx.stroke(); ctx.setLineDash([]);
   ctx.restore();
-  sans('REDESIGN', cx, cy-48, 15, C.gold, arrowA*0.7);
+}
 
-  // ── NEW org (right): flat, AI-centred ──
-  const newX = W*0.76;
-  const newA = fi(71, 1.5)*a;
+// ── VOICEOVER ────────────────────────────────────────────────
+const SCRIPT=[
+  [.8,  "For decades, executive power came from controlling information."],
+  [6.5, "Analysis required armies of people — and weeks of time."],
+  [11,  "The CEO sat at the top of a pyramid of expensive intelligence."],
+  [14.8,"Then everything changed."],
+  [17.2,"Every executive just got a team of geniuses — available instantly."],
+  [22.5,"The analysis that once took six weeks now takes hours."],
+  [27.8,"But most executives fell into the same trap."],
+  [32,  "They used new capability to do old things faster."],
+  [36.5,"More reports. More slides. Same thinking."],
+  [40.8,"Here's what actually changed."],
+  [43.8,"Gathering information is no longer the bottleneck."],
+  [47.8,"Judgment is."],
+  [50.2,"The question shifts — from 'what does the data say?' to 'what should we do?'"],
+  [55.8,"There are three things AI simply cannot do."],
+  [59.2,"Make values-laden choices."],
+  [62.2,"Bear real organizational accountability."],
+  [65.2,"And build genuine trust."],
+  [69.2,"So the winners won't simply adopt AI."],
+  [73.2,"They'll redesign their entire organizations around it."],
+  [78.2,"Flatter. Faster. Built for judgment, not information processing."],
+  [83.2,"Not how to use AI —"],
+  [86.2,"what changes when you do."],
+];
+let ttsIdx=-1, subtitle='', subAt=-99, bestVoice=null;
 
-  sans('N E W', newX, 155, 18, C.gold, newA);
+function initVoices(){
+  if(!window.speechSynthesis)return;
+  function pick(){
+    const vs=speechSynthesis.getVoices(); if(!vs.length)return;
+    const prefs=['Daniel','Alex','Google UK English Male','David','Google US English'];
+    for(const p of prefs){ const v=vs.find(v=>v.name.includes(p)); if(v){bestVoice=v;return;} }
+    bestVoice=vs.find(v=>v.lang.startsWith('en'))||vs[0];
+  }
+  speechSynthesis.onvoiceschanged=pick; pick();
+}
+function speak(t){
+  if(!window.speechSynthesis)return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(t);
+  u.rate=.88; u.pitch=1; u.volume=1;
+  if(bestVoice)u.voice=bestVoice;
+  speechSynthesis.speak(u);
+}
+function tickTTS(){
+  for(let i=ttsIdx+1;i<SCRIPT.length;i++){
+    if(T>=SCRIPT[i][0]){ speak(SCRIPT[i][1]); subtitle=SCRIPT[i][1]; subAt=T; ttsIdx=i; }
+  }
+}
+function drawSubs(){
+  if(!subtitle)return;
+  const age=T-subAt;
+  const nextT=ttsIdx+1<SCRIPT.length?SCRIPT[ttsIdx+1][0]:92;
+  const dur=Math.min(nextT-subAt,6.5);
+  const a=clamp(age<.4?age/.4:age>dur-.4?(dur-age)/.4:1);
+  if(a<=0)return;
+  const sy=H-48;
+  ctx.save(); ctx.font='21px Georgia,serif'; ctx.textAlign='center';
+  const tw=ctx.measureText(subtitle).width;
+  const pw=Math.min(tw+50,W*.85);
+  ctx.globalAlpha=a*.8; ctx.fillStyle='#000';
+  ctx.beginPath(); ctx.roundRect(W/2-pw/2,sy-20,pw,40,8); ctx.fill();
+  ctx.globalAlpha=a; ctx.fillStyle='#fff'; ctx.textBaseline='middle';
+  ctx.fillText(subtitle,W/2,sy); ctx.restore();
+}
 
-  // AI orb
-  glowOrb(newX, cy-20, 42, C.blue, newA, 3);
-  mono('AI', newX, cy-20, 18, '#fff', newA);
+// ── SCENES ───────────────────────────────────────────────────
 
-  // humans orbiting
-  const humanCount = 7;
-  for (let i = 0; i < humanCount; i++) {
-    const angle = (i / humanCount) * Math.PI*2 + (T - 68) * 0.5;
-    const hx = newX + Math.cos(angle) * 130;
-    const hy = (cy-20) + Math.sin(angle) * 100;
-    line(newX, cy-20, hx, hy, C.blue, 0.8, newA*0.3);
-    stickPerson(hx, hy, 24, i < 3 ? C.gold : C.white, newA*0.9);
+// SCENE 1 (0–13s) — The Old World
+function scene1(a){
+  bgOffice(a);
+  bold('THE  OLD  WORLD', W/2, 42, 22, C.gold, fi(.5,1)*a);
+  const dt=H*.56;
+
+  // Papers accumulating on desk
+  const nP=Math.min(Math.floor(clamp((T-1.5)/7)*9+1), 9);
+  for(let p=0;p<nP;p++){
+    const ang=(p*.22-.4)*.7;
+    paper(W/2+p*7-30, dt-14-p*3, 76, 98, ang, fi(1.5+p*.8,.5)*a);
   }
 
-  // ── key lines ──
-  txt('Flat. Judgment-centred.', cx, 565, 26, C.white, fi(74.5, 1.2)*a);
-  txt('Designed around AI, not retrofitted to it.', cx, 605, 26, C.gold, fi(76, 1.2)*a);
-  txt('This is the executive\'s real task.', cx, 655, 22, C.gray, fi(77.5, 1.2)*a*0.85);
-}
+  // EXEC at desk (upper body; legs hidden by desk front)
+  const eMood=T>7?'worried':'neutral';
+  char(W/2-30, dt+148, 27, {
+    mood:eMood, aL:T>8?.55:.2, aR:T>8?-.55:-.15,
+    bob:Math.sin(T*1.8)*2, a,
+  });
 
-// ─────────────────────────────────────────────────────────
-//  Scene 7  (82 – 90s)  Finale / Core Thesis
-// ─────────────────────────────────────────────────────────
-function scene7(a) {
-  const cx = W/2, cy = H/2;
-
-  // background radial pulse
-  ctx.save();
-  ctx.globalAlpha = fi(82,2)*a * 0.12;
-  const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, 700);
-  bg.addColorStop(0, C.gold);
-  bg.addColorStop(0.4, C.blue);
-  bg.addColorStop(1, 'transparent');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
-  ctx.restore();
-
-  // separator lines
-  const la = fi(82.3, 1)*a * 0.4;
-  line(cx-330, cy-130, cx+330, cy-130, C.gold, 1, la);
-  line(cx-330, cy-48, cx+330, cy-48, C.gold, 1, la);
-
-  // title
-  txt('THE AI-NATIVE EXECUTIVE', cx, cy - 88, 52, C.gold, fi(82.2, 1.2)*a);
-
-  // thesis lines
-  txt('AI will automate much of the work executives do,', cx, cy+10, 28, C.white, fi(83.5,1.2)*a);
-  txt('but amplify the importance of the decisions', cx, cy+48, 28, C.white, fi(83.5,1.2)*a);
-  txt('only executives can make.', cx, cy+86, 28, C.white, fi(83.5,1.2)*a);
-
-  // key call to action
-  txt('The winners won\'t simply adopt AI —', cx, cy+162, 30, C.gold, fi(85.5,1.2)*a);
-  txt('they\'ll redesign their organizations around it.', cx, cy+200, 30, C.gold, fi(85.5,1.2)*a);
-
-  // sub
-  txt('Not how to use AI. What changes when you do.', cx, cy+278, 21, C.gray, fi(87,1.2)*a*0.85);
-}
-
-// ─────────────────────────────────────────────────────────
-//  Progress bar
-// ─────────────────────────────────────────────────────────
-function drawProgressBar() {
-  rect(0, H-3, W, 3, C.grayDim, 1);
-  rect(0, H-3, W * clamp(T/90), 3, C.gold, 1);
-
-  // time remaining
-  const rem = Math.max(0, 90 - Math.floor(T));
-  mono(`${Math.floor(rem/60)}:${(rem%60).toString().padStart(2,'0')}`, W-44, H-18, 13, C.gray+'99', 1);
-}
-
-// ─────────────────────────────────────────────────────────
-//  Main render loop
-// ─────────────────────────────────────────────────────────
-let startTime = null;
-let running = false;
-
-function draw(timestamp) {
-  if (!running) return;
-  if (!startTime) startTime = timestamp;
-  T = (timestamp - startTime) / 1000;
-
-  if (T > 90) {
-    // freeze on final frame
-    T = 90;
+  // Analyst 1 (T 0.5→5.5)
+  if(T>0.5&&T<6){
+    const p1=clamp((T-.5)/2.5,0,1), p2=clamp((T-4.2)/1.4,0,1);
+    const ax=lerp(W+70,W/2+185,easeOut(p1))+lerp(0,W-W/2-185+70,easeIn(p2));
+    const moving=p1>0&&p1<1||p2>0&&p2<1;
+    const w=moving?wc():idle();
+    char(ax, H*.72, 23, {
+      mood:'neutral', suit:'#3a4a36', tie:'#607060', facing:-1,
+      aL:moving?w.aL:(T>3.5&&T<4.5?-.85:.2),
+      aR:moving?w.aR:(T>3.5&&T<4.5?.85:-.2),
+      lL:w.lL, lR:w.lR, bob:w.bob, a:a*(1-easeIn(p2)),
+    });
+    if(T<3.8) paper(ax-35, H*.72-178, 62,82,.15, a*(1-easeIn(p2)));
   }
 
-  ctx.fillStyle = C.bg;
-  ctx.fillRect(0, 0, W, H);
+  // Analyst 2 (T 6→12)
+  if(T>6&&T<13){
+    const p1=clamp((T-6)/2.5,0,1), p2=clamp((T-10.5)/1.5,0,1);
+    const ax=lerp(W+70,W/2+200,easeOut(p1))+lerp(0,W-W/2-200+70,easeIn(p2));
+    const w=wc();
+    char(ax, H*.72, 23, {
+      mood:'neutral', suit:'#383a50', tie:'#806890', facing:-1,
+      aL:w.aL, aR:w.aR, lL:w.lL, lR:w.lR, bob:w.bob,
+      a:a*(1-easeIn(p2)),
+    });
+    if(T<9.5) paper(ax-33, H*.72-175, 66,90,-.12, a*(1-easeIn(p2)));
+  }
 
-  // Scene schedule (with 1.2s overlap for crossfade)
-  if (T < 15.2)              scene1(sceneAlpha(0, 15.2));
-  if (T > 13.5 && T < 28.5) scene2(sceneAlpha(13.5, 28.5));
-  if (T > 27  && T < 41.5)  scene3(sceneAlpha(27, 41.5));
-  if (T > 40  && T < 55.5)  scene4(sceneAlpha(40, 55.5));
-  if (T > 54  && T < 69.5)  scene5(sceneAlpha(54, 69.5));
-  if (T > 68  && T < 83.5)  scene6(sceneAlpha(68, 83.5));
-  if (T > 82)                scene7(sceneAlpha(82, 91));
+  // Clock
+  {const ckx=W-125,cky=165,ckr=52;
+  ctx.save(); ctx.globalAlpha=a*.75;
+  ctx.fillStyle='#c0a86044'; ctx.beginPath(); ctx.arc(ckx,cky,ckr,0,PI*2); ctx.fill();
+  ctx.strokeStyle='#6a5030'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(ckx,cky,ckr,0,PI*2); ctx.stroke();
+  const h=T*.04-PI/2, m=T*.08-PI/2;
+  ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(ckx,cky); ctx.lineTo(ckx+Math.cos(h)*34,cky+Math.sin(h)*34); ctx.stroke();
+  ctx.lineWidth=2; ctx.strokeStyle='#9a7040';
+  ctx.beginPath(); ctx.moveTo(ckx,cky); ctx.lineTo(ckx+Math.cos(m)*46,cky+Math.sin(m)*46); ctx.stroke();
+  ctx.restore();}
 
-  drawProgressBar();
-
-  if (T < 90) requestAnimationFrame(draw);
+  txt('"Reports took weeks. Analysis required armies."', W/2, H*.88, 22, C.gray, fi(4,1.5)*a);
 }
 
-// ─────────────────────────────────────────────────────────
-//  Start on click
-// ─────────────────────────────────────────────────────────
-const overlay = document.getElementById('overlay');
-overlay.addEventListener('click', () => {
-  overlay.style.display = 'none';
-  running = true;
+// SCENE 2 (13–27s) — AI Arrives
+function scene2(a){
+  bgModern(a);
+  bold('THE  SHIFT', W/2, 42, 22, C.gold, fi(13.5,1)*a);
+
+  // Flash at cut
+  const fl=easeOut(clamp((T-13)/.6))*(1-easeOut(clamp((T-13.6)/.8)));
+  if(fl>0){ctx.save();ctx.globalAlpha=fl*a*.6;ctx.fillStyle='#aaccff';ctx.fillRect(0,0,W,H);ctx.restore();}
+
+  // AI orb descends
+  const orbY=lerp(-80,195,easeOut(clamp((T-13)/1.8)));
+  orb(W/2, orbY, 44, fi(13,1.5)*a);
+
+  // Capability beams + labels
+  const beamA=fi(15.2,1.5)*a;
+  const caps=[
+    {l:'Strategy',x:W/2-460,y:220},{l:'Finance',x:W/2-300,y:138},
+    {l:'Legal',x:W/2-152,y:178},{l:'Research',x:W/2+152,y:178},
+    {l:'Marketing',x:W/2+300,y:138},{l:'Engineering',x:W/2+460,y:220},
+  ];
+  caps.forEach(({l,x,y})=>{
+    ln(W/2,orbY+44,x,y,C.blue+'55',1.5,beamA);
+    circ(x,y,17,C.blue+'44',beamA);
+    sans(l,x,y+30,15,C.blue,beamA*.8);
+  });
+
+  // Exec standing, amazed
+  char(W/2, H*.72, 32, {
+    mood:T>16?'amazed':'neutral',
+    aL:T>16?-1.15:.15, aR:T>16?1.15:-.15,
+    bob:Math.sin(T*1.8)*2, a:fi(14.5,1.5)*a,
+  });
+
+  txt('Every executive just got', W/2, H*.82, 30, C.white, fi(17.2,1)*a);
+  bold('a team of geniuses.', W/2, H*.82+44, 34, C.gold, fi(18.5,1)*a);
+  sans('Analysis. Research. Strategy. Instantly.', W/2, H*.82+88, 21, C.gray, fi(20,1)*a*.8);
+}
+
+// SCENE 3 (27–40s) — The Trap
+function scene3(a){
+  bgModern(a);
+  bold('THE  TRAP', W/2, 42, 22, C.red, fi(27.8,1)*a);
+  const dt=H*.56;
+
+  // Growing paper pile
+  const nP=Math.min(Math.floor(clamp((T-28)/3)*7+2),18);
+  for(let p=0;p<nP;p++){
+    const col=Math.floor(p/3), row=p%3;
+    const px=W/2+col*90-100, py=dt-28-row*52;
+    paper(px,py,68,86,(p*.18-.3)*.8, fi(28+p*.18,.35)*a*clamp(1-(nP-1-p)*.04));
+  }
+
+  // Mini AI orb on desk
+  orb(W/2+195, dt-22, 18, fi(27.8,1)*a*.7);
+
+  // Exec — happy then dismayed
+  const shake=T>35?Math.sin(T*9)*.06:0;
+  char(W/2-55+shake*25, dt+145, 27, {
+    mood:T<33?'happy':T<36?'neutral':'worried',
+    aL:T<33?-.65:.25, aR:T<33?.85:-.2,
+    bob:Math.sin(T*1.8)*2, a,
+  });
+
+  // Red X + caption
+  const xA=fi(35,1.5)*a;
+  if(xA>0){
+    ctx.save(); ctx.globalAlpha=xA;
+    ctx.strokeStyle=C.red; ctx.lineWidth=9; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(W*.76-55,H*.2); ctx.lineTo(W*.76+55,H*.44); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(W*.76+55,H*.2); ctx.lineTo(W*.76-55,H*.44); ctx.stroke();
+    ctx.restore();
+    sans('"Same thinking, just faster."', W/2, H*.82, 25, C.red, xA);
+    sans('Like bolting an electric motor onto a steam-age factory.', W/2, H*.82+37, 19, C.gray, fi(37,1.2)*a*.8);
+  }
+}
+
+// SCENE 4 (40–54s) — The Bottleneck Moves
+function scene4(a){
+  bgAbstract(a);
+  bold('THE  BOTTLENECK  MOVES', W/2, 42, 26, C.gold, fi(40.5,1)*a);
+
+  // Data stream from left
+  const stA=fi(40.5,1)*a;
+  const lbls=['ROI','P&L','MRR','NPS','KPI','ARR','OKR','CAC'];
+  for(let i=0;i<22;i++){
+    const ph=(((T*1.1+i/22)%1)+1)%1;
+    const dx=lerp(-40,W/2-130,ph);
+    const dy=H*.4+Math.sin(i*1.85)*105+Math.sin(ph*PI)*18;
+    const da=Math.sin(ph*PI)*stA;
+    circ(dx,dy,4+Math.sin(i*2.1)*2,C.blue,da*.7);
+    if(i%3===0) mono(lbls[Math.floor(i/3)%lbls.length],dx+15,dy,11,C.blue,da*.5,'left');
+  }
+
+  // Exec as gatekeeper
+  char(W/2, H*.72, 34, {
+    mood:'thinking', aL:-.65, aR:.22,
+    bob:Math.sin(T*1.8)*2, a:fi(41,1.5)*a,
+  });
+
+  // JUDGMENT glow
+  const jA=fi(43,1.5)*a;
+  if(jA>0){
+    ctx.save(); ctx.globalAlpha=jA*.4;
+    let g=ctx.createRadialGradient(W/2,H*.5,0,W/2,H*.5,85);
+    g.addColorStop(0,C.gold+'66'); g.addColorStop(1,'transparent');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H); ctx.restore();
+    bold('JUDGMENT', W/2, H*.5+55, 28, C.gold, jA);
+  }
+
+  // Output arrow right
+  const outA=fi(47,1.5)*a;
+  if(outA>0){
+    ln(W/2+130,H*.45,W/2+195,H*.45,C.gold,2,outA);
+    ctx.save(); ctx.globalAlpha=outA; ctx.fillStyle=C.gold;
+    ctx.beginPath(); ctx.moveTo(W/2+197,H*.45); ctx.lineTo(W/2+182,H*.45-10); ctx.lineTo(W/2+182,H*.45+10); ctx.closePath(); ctx.fill(); ctx.restore();
+    circ(W/2+240,H*.45,32,C.gold+'33',outA);
+    bold('WHAT\nSHOULD\nWE DO?',W/2+240,H*.45,16,C.gold,outA);
+  }
+
+  txt('Gathering information becomes cheap.', W/2, H*.82, 27, C.white, fi(43.5,1)*a);
+  bold('Judgment becomes the scarce resource.', W/2, H*.82+42, 29, C.gold, fi(45.5,1)*a);
+}
+
+// SCENE 5 (54–68s) — What Endures
+function scene5(a){
+  bgColumns(a);
+  bold('WHAT AI CANNOT DO', W/2, 42, 26, C.gold, fi(54.5,1)*a);
+
+  const COLS=[
+    {x:W*.18,col:C.gold, title:['VALUES-LADEN','CHOICE'], sub:['Which outcome do we want?','What are we willing to trade?'], t:55.5},
+    {x:W*.5, col:C.blue, title:['ORGANIZATIONAL','ACCOUNTABILITY'], sub:['Who actually bears','responsibility?'], t:62},
+    {x:W*.82,col:C.green,title:['GENUINE','TRUST'], sub:['Relationships.','Track records.'], t:65},
+  ];
+  COLS.forEach(({x,col,title,sub,t:et})=>{
+    const ca=fi(et,1.5)*a; if(ca<=0)return;
+    ctx.save(); ctx.globalAlpha=ca*.45;
+    let g=ctx.createRadialGradient(x,H*.38,0,x,H*.38,165);
+    g.addColorStop(0,col+'55'); g.addColorStop(1,'transparent');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H); ctx.restore();
+    fr(x-34,H*.07,68,H*.67,col+'1c',ca);
+    title.forEach((l,i)=>bold(l,x,H*.04+i*28,19,col,ca));
+    sub.forEach((l,i)=>sans(l,x,H*.83+i*24,15,col+'cc',ca*.85));
+  });
+
+  // Exec walks between pillars
+  let ex=W*.18;
+  if(T>56&&T<60)  ex=lerp(W*.18,W*.5,eIO((T-56)/4));
+  else if(T>=60&&T<64) ex=W*.5;
+  else if(T>=64&&T<67) ex=lerp(W*.5,W*.82,eIO((T-64)/3));
+  else if(T>=67)  ex=W*.82;
+  const moving=(T>56&&T<60)||(T>64&&T<67);
+  const w=moving?wc(4):idle();
+  char(ex, H*.75, 30, {
+    mood:T>63?'thinking':T>59?'neutral':'neutral',
+    facing:T>56?1:-1,
+    aL:moving?w.aL:T>60?.5:.15, aR:moving?w.aR:T>60?-.5:-.15,
+    lL:w.lL, lR:w.lR, bob:w.bob, a:fi(55,1)*a,
+  });
+
+  txt("These aren't AI limitations — they're irreducibly human.", W/2, H*.91, 20, C.gray, fi(66,1.2)*a*.8);
+}
+
+// SCENE 6 (68–82s) — The Redesign
+function scene6(a){
+  bgWhiteboard(a);
+  bold('THE  REDESIGN', W/2, 42, 26, C.gold, fi(68.5,1)*a);
+
+  const wb={x:W*.08,y:72,w:W*.84,h:H*.6};
+  const dP=fi(69.2,1)*a;
+
+  // Old pyramid (left half of board)
+  if(dP>0){
+    const ox=wb.x+wb.w*.22, oy=wb.y+50;
+    ctx.save(); ctx.globalAlpha=dP;
+    ctx.strokeStyle='#4060a0'; ctx.lineWidth=3; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(ox-135,oy+wb.h-90); ctx.lineTo(ox+135,oy+wb.h-90); ctx.closePath(); ctx.stroke();
+    for(let l=1;l<4;l++){ const ly=oy+(wb.h-90)*l/4, lw=135*l/4;
+      ctx.beginPath(); ctx.moveTo(ox-lw,ly); ctx.lineTo(ox+lw,ly); ctx.stroke(); }
+    circ(ox,oy,12,'#4060a0',dP);
+    ctx.restore();
+    sans('OLD',ox,oy+(wb.h-90)*.5,22,'#4060a0',dP*.6);
+  }
+  // X over pyramid
+  const xP=fi(71.2,1.2)*a;
+  if(xP>0){
+    const ox=wb.x+wb.w*.22, oy=wb.y+50;
+    ctx.save(); ctx.globalAlpha=xP;
+    ctx.strokeStyle=C.red; ctx.lineWidth=7; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(ox-110,oy+20); ctx.lineTo(ox+110,oy+wb.h-110); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ox+110,oy+20); ctx.lineTo(ox-110,oy+wb.h-110); ctx.stroke();
+    ctx.restore();
+  }
+
+  // New org (right half of board)
+  const nP=fi(73.2,1.5)*a;
+  if(nP>0){
+    const nx=wb.x+wb.w*.72, ny=wb.y+wb.h/2;
+    ctx.save(); ctx.globalAlpha=nP;
+    ctx.strokeStyle=C.blue; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.arc(nx,ny,32,0,PI*2); ctx.stroke();
+    ctx.restore();
+    circ(nx,ny,32,C.blue+'30',nP);
+    mono('AI',nx,ny,16,C.blue,nP);
+    for(let i=0;i<6;i++){
+      const ang=i/6*PI*2;
+      const hx=nx+Math.cos(ang)*115, hy=ny+Math.sin(ang)*88;
+      ln(nx,ny,hx,hy,C.blue+'44',1.5,nP);
+      circ(hx,hy,17,i<3?C.gold+'88':C.blue+'66',nP);
+    }
+    sans('NEW · FLAT · AI-CENTRED',nx,wb.y+wb.h-35,15,C.blue,nP*.8);
+  }
+
+  // Exec at board (marker raised)
+  char(wb.x+wb.w*.5, H*.8, 28, {
+    mood:T>74?'happy':'determined', facing:-1,
+    aL:-1.05, aR:.2, bob:Math.sin(T*1.8)*1.5, a:fi(68.5,1)*a,
+  });
+
+  sans("The winners won't simply adopt AI —", W/2, H*.87, 25, C.white, fi(75.5,1.2)*a);
+  bold("they'll redesign their organizations around it.", W/2, H*.87+38, 27, C.gold, fi(77,1.2)*a);
+}
+
+// SCENE 7 (82–90s) — Finale
+function scene7(a){
+  bgHorizon(a);
+  const w=wc(3);
+  char(W/2, H*.79, 34, {
+    mood:'determined', facing:1,
+    aL:w.aL, aR:w.aR, lL:w.lL, lR:w.lR, bob:w.bob, a:fi(82,1)*a,
+  });
+  ln(W/2-380,H*.2,W/2+380,H*.2,C.gold,1,fi(82.5,1)*a*.4);
+  ln(W/2-380,H*.47,W/2+380,H*.47,C.gold,1,fi(85,1)*a*.4);
+  bold('THE AI-NATIVE EXECUTIVE', W/2, H*.26, 54, C.gold, fi(82.5,1.2)*a);
+  txt('Not how to use AI.', W/2, H*.35, 30, C.white, fi(84.5,1.2)*a);
+  txt('What changes when you do.', W/2, H*.35+44, 30, C.white, fi(84.5,1.2)*a);
+  txt('AI automates much of the work executives do —', W/2, H*.54, 22, '#aaa', fi(86.5,1.2)*a);
+  txt('but amplifies the decisions only executives can make.', W/2, H*.54+32, 22, '#aaa', fi(86.5,1.2)*a);
+}
+
+// ── PROGRESS BAR ─────────────────────────────────────────────
+function drawProgress(){
+  fr(0,H-4,W,4,'#1a1a2a',1);
+  fr(0,H-4,W*clamp(T/90),4,C.gold,1);
+  const r=Math.max(0,90-Math.floor(T));
+  mono(`${Math.floor(r/60)}:${(r%60).toString().padStart(2,'0')}`,W-44,H-18,13,'#555',1);
+}
+
+// ── MAIN LOOP ────────────────────────────────────────────────
+let t0=null, running=false;
+function draw(ts){
+  if(!running)return;
+  if(!t0)t0=ts;
+  T=(ts-t0)/1000; if(T>90)T=90;
+  ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H);
+  tickTTS();
+  if(T<15)               scene1(scA(0,15,1,1));
+  if(T>13.5&&T<28.5)     scene2(scA(13.5,28.5,.8,.8));
+  if(T>27.2&&T<41.5)     scene3(scA(27.2,41.5,.8,.8));
+  if(T>40.2&&T<55.5)     scene4(scA(40.2,55.5,.8,.8));
+  if(T>54.2&&T<69.5)     scene5(scA(54.2,69.5,.8,.8));
+  if(T>68.2&&T<83.5)     scene6(scA(68.2,83.5,.8,.8));
+  if(T>82)               scene7(scA(82,91,.8,2));
+  drawSubs();
+  drawProgress();
+  if(T<90)requestAnimationFrame(draw);
+}
+
+// ── STARTUP ──────────────────────────────────────────────────
+initVoices();
+const overlay=document.getElementById('overlay');
+overlay.addEventListener('click',()=>{
+  overlay.style.display='none';
+  running=true;
+  if(window.speechSynthesis){ const u=new SpeechSynthesisUtterance(' '); u.volume=0; speechSynthesis.speak(u); }
   requestAnimationFrame(draw);
 });
-
-// Draw still first frame
-ctx.fillStyle = C.bg;
-ctx.fillRect(0, 0, W, H);
-T = 0;
-scene1(1);
-drawProgressBar();
+// Static preview frame
+ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H); T=1; scene1(1); drawProgress();
 </script>
 </body>
 </html>
