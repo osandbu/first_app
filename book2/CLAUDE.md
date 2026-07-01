@@ -47,14 +47,19 @@ powerful game than the one CS programs teach.
 
 ## File Conventions
 
-All content lives in `book2/content/`. Each chapter goes through 4 phases:
+Content lives in `book2/content/` with two subdirectories:
 
-| Phase     | File                        | Description                              |
-|-----------|----------------------------|------------------------------------------|
-| research  | `{id}_research.md`         | Frameworks, examples, counter-arguments  |
-| draft     | `{id}_draft.md`            | First full prose draft                   |
-| critique  | `{id}_critique.md`         | Structured editorial critique            |
-| final     | `{id}_final.md`            | Polished version ready for publication   |
+- `book2/content/final/` — published chapters, one file per chapter (`{id}.md`)
+- `book2/content/working/` — working files for each chapter
+
+Each chapter goes through 4 phases:
+
+| Phase     | File                              | Description                              |
+|-----------|-----------------------------------|------------------------------------------|
+| research  | `working/{id}_research.md`        | Frameworks, examples, counter-arguments  |
+| draft     | `working/{id}_draft.md`           | First full prose draft                   |
+| critique  | `working/{id}_critique.md`        | Structured editorial critique            |
+| final     | `final/{id}.md`                   | Polished version ready for publication   |
 
 Foundation documents (already written):
 - `book2/content/00_thesis.md` — core thesis

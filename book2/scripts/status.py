@@ -50,7 +50,9 @@ PARTS = [
 
 
 def phase_exists(id_, phase):
-    return os.path.isfile(f"{CONTENT}/{id_}_{phase}.md")
+    if phase == "final":
+        return os.path.isfile(f"{CONTENT}/final/{id_}.md")
+    return os.path.isfile(f"{CONTENT}/working/{id_}_{phase}.md")
 
 
 def mark(id_, phase):
